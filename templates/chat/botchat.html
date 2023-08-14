@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Page</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="/static/css/chat/botchat.css">
+</head>
+<body>
+    <div id="chat-container">
+        <div id="left-panel">
+            <button id="new-chat-button">New chat</button>
+            <div id="chat-history"></div>
+        </div>
+        <div id="right-panel">
+            <div id="chat-display"></div>
+            <div id="input-panel">
+                <textarea id="text-input" placeholder="可以输入文本"></textarea>
+                <button id="voice-button">开始录音</button>
+            </div>
+        </div>
+    </div>
+    <script src="/static/js/chat/botchat.js"></script>
+</body>
+</html>

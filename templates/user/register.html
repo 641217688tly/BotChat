@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>register</title>
+    <link href="/static/css/user/register.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById("reg-form").addEventListener("submit", function(e){
+                e.preventDefault();
+
+                var username = document.getElementById("username").value;
+                var email = document.getElementById("email").value;
+                var password = document.getElementById("password").value;
+
+                axios.post("/user/register/", {
+                    username: username,
+                    email: email,
+                    password: password
+                })
+                .then(function(response) {
+                    var data = response.data;
+                    if (data.status === 20011) {
+                        document.getElementById("username_err").innerText = data.msg;
+                        document.getElementById("username_err").style.display = "block";
+                        setTimeout(function(){
+                            window.location.href = "/user/login/";
+                        }, 3000);
+                    } else {
+                        document.getElementById("username_err").innerText = data.msg;
+                        document.getElementById("username_err").style.display = "block";
+                    }
+                })
+                .catch(function(error) {
+                    document.getElementById("username_err").innerText = "An error occurred: " + error;
+                    document.getElementById("username_err").style.display = "block";
+                });
+            });
+        });
+    </script>
+</head>
+
+<body>
+<div class="form-div">
+    <div class="reg-content">
+        <h1><b>Welcome to register</b></h1>
+        <span>Already have an account?</span> <a href="/user/login/">Log in</a>
+    </div>
+
+    <form id="reg-form">
+        <table>
+            <tr>
+                <td>User Name</td>
+                <td class="inputs">
+                    <input name="username" type="text" id="username">
+                    <br>
+                    <span id="username_err" class="err_msg" style="display: none"></span>
+                </td>
+            </tr>
+            <tr>
+                <td>Email</td>
+                <td class="inputs">
+                    <input name="email" type="email" id="email">
+                    <br>
+                    <span id="email_err" class="err_msg" style="display: none"></span>
+                </td>
+            </tr>
+            <tr>
+                <td>Password</td>
+                <td class="inputs">
+                    <input name="password" type="password" id="password">
+                    <br>
+                    <span id="password_err" class="err_msg" style="display: none"></span>
+                </td>
+            </tr>
+        </table>
+
+        <div class="buttons">
+            <input value="register" type="submit" id="reg_btn">
+        </div>
+        <br class="clear">
+    </form>
+</div>
+</body>
+</html>

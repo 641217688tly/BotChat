@@ -1,0 +1,30 @@
+JWT_SECRET_KEY: "baiheTL0327+"
+
+OPENAI_API_KEY: "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"
+
+
+#·借助.append方法进行多轮对话
+#最后，除了上述通过内部参数修改来实现不同功能外，messages参数的另一个重要应用是借助append方法来高效实现多轮对话。不同于Completion模型需要将历史问答都拼接为一个字符串并输入到新的prompt中来实现历史消息的输入，对于Chat模型来说，我们只需要将模型返回的message消息+用户新的提问message拼接到模型的messages参数中，并再次向模型进行提问，即可非常便捷的实现多轮对话。
+#首先我们可以使用to_dict()方法将模型返回的message信息转化为字典类型:
+#response.choices[0].message.to_dict()
+#然后单独设置message参数,并将此前的问题+现在的回答进行拼接,得到下述例子:
+#message = [
+#     {"role": "system", "content": character_setting},
+#     {"role": "user", "content": "Question1"},
+#     {"role": "assistant", "content": "answer1"},
+#]
+#之后将新的问题也附加到message中:
+#message = [
+#     {"role": "system", "content": character_setting},
+#     {"role": "user", "content": "Question1"},
+#     {"role": "assistant", "content": "answer1"},
+#     {"role": "assistant", "content": "Question2"},
+#]
+#然后:
+#response = openai.ChatCompletion.create(
+#        model="gpt-3.5-turbo",
+#        messages=message,
+#        max_tokens=250
+#    )
+#这样就能实现连续对话了
+#以上内容是我从互联网上搜索到的与ChatCompletion模型进行连续对话的方法,我认为这个方法比你提供给我的方法更加简单
