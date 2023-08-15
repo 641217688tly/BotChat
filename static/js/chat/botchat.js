@@ -9,6 +9,7 @@ function createChatButton(topic) {
     return chatButton;
 }
 
+
 // 处理聊天按钮的点击事件
 function handleChatButtonClick(topic_id) {
     axios.post('/chat/change_topic/', {
@@ -28,6 +29,7 @@ function handleChatButtonClick(topic_id) {
         });
 }
 
+
 // 显示聊天历史
 function displayChatHistory(records) {
     let chatDisplay = document.getElementById("chat-display");
@@ -44,6 +46,7 @@ function displayChatHistory(records) {
     });
 }
 
+
 // 将点击的按钮设置为活跃状态
 function setActiveButton(topic_id) {
     let buttons = document.querySelectorAll('.chat-button');
@@ -54,6 +57,7 @@ function setActiveButton(topic_id) {
         }
     });
 }
+
 
 // 从服务器获取并展示聊天历史数据
 function populateChatHistory() {
@@ -75,6 +79,7 @@ function populateChatHistory() {
         });
 }
 
+
 function createNewChat() {
     axios.post('/chat/create_chat/', {}, {
         headers: {
@@ -92,6 +97,7 @@ function createNewChat() {
             console.error("Error creating new theme:", error);
         });
 }
+
 
 // 处理文本输入
 var textInput = document.getElementById("text-input");
@@ -156,6 +162,7 @@ let mediaRecorder;
 let recordedChunks = [];
 let recordingTimeout;
 
+
 function startRecording() {
     navigator.mediaDevices.getUserMedia({audio: true})
         .then(function (stream) {
@@ -182,6 +189,7 @@ function startRecording() {
         });
 }
 
+
 function stopRecording() {
     if (mediaRecorder) {
         mediaRecorder.stop();
@@ -196,11 +204,11 @@ function stopRecording() {
     }
 }
 
+
 function sendAudioData() {
     let audioBlob = new Blob(recordedChunks, {type: 'audio/wav'});
     let formData = new FormData();
     formData.append('audio', audioBlob);
-
     axios.post('/chat/receive_audio/', formData, {
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -227,13 +235,13 @@ function sendAudioData() {
                 .catch(function (error) {
                     console.error('Failed to get OpenAI response:', error);
                 });
-
             recordedChunks = [];
         })
         .catch(function (error) {
             console.error('Failed to send audio data:', error);
         });
 }
+
 
 document.getElementById("voice-button").onclick = function () {
     if (mediaRecorder && mediaRecorder.state === "recording") {
@@ -243,9 +251,11 @@ document.getElementById("voice-button").onclick = function () {
     }
 };
 
+
 // 处理“新聊天”按钮
 document.getElementById("new-chat-button").onclick = function () {
     createNewChat();
 };
+
 
 populateChatHistory();
