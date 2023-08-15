@@ -11,11 +11,12 @@ function createChatButton(topic) {
 
 // 处理聊天按钮的点击事件
 function handleChatButtonClick(topic_id) {
-    axios.post('/change_theme/', {
+    axios.post('/chat/change_topic/', {
         topic_id: topic_id
     }, {
         headers: {
-            'X-Requested-With': 'XMLHttpRequest'
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'multipart/form-data'
         }
     })
         .then(function (response) {
@@ -109,7 +110,6 @@ textInput.addEventListener("keydown", function (event) {
 
                 if (response.data.type === 'existing_topic') {
                     let chatDisplay = document.getElementById("chat-display");
-
                     let userMessage = document.createElement("p");
                     userMessage.innerText = "You: " + userText;
                     chatDisplay.appendChild(userMessage);
@@ -117,14 +117,32 @@ textInput.addEventListener("keydown", function (event) {
                     let themeList = document.getElementById('chat-history');
                     let newThemeButton = createChatButton(response.data.topic);
                     themeList.insertBefore(newThemeButton, themeList.firstChild);
-
                     let chatDisplay = document.getElementById("chat-display");
                     chatDisplay.innerHTML = '';  // 清空显示
-
                     let userMessage = document.createElement("p");
                     userMessage.innerText = "You: " + userText;
                     chatDisplay.appendChild(userMessage);
                 }
+
+                // 发送到 /chat/chat_with_openai/ 路由获取OpenAI的响应
+                axios.post('/chat/chat_with_openai/', {
+                    text: userText
+                }, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(function (responseOpenAI) {
+                        let botResponse = responseOpenAI.data.conversation.response;
+                        let chatDisplay = document.getElementById("chat-display");
+                        let botMessage = document.createElement("p");
+                        botMessage.innerText = "Bot: " + botResponse;
+                        chatDisplay.appendChild(botMessage);
+                    })
+                    .catch(function (error) {
+                        console.error('Failed to get OpenAI response:', error);
+                    });
+
                 textInput.value = ""; // 清空输入框
             })
             .catch(function (error) {
@@ -133,15 +151,16 @@ textInput.addEventListener("keydown", function (event) {
     }
 });
 
+
 let mediaRecorder;
 let recordedChunks = [];
 let recordingTimeout;
 
 function startRecording() {
-    navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(function(stream) {
+    navigator.mediaDevices.getUserMedia({audio: true})
+        .then(function (stream) {
             mediaRecorder = new MediaRecorder(stream);
-            mediaRecorder.ondataavailable = function(event) {
+            mediaRecorder.ondataavailable = function (event) {
                 if (event.data.size > 0) {
                     recordedChunks.push(event.data);
                 }
@@ -158,7 +177,7 @@ function startRecording() {
                 }
             }, 25000);  // 25 秒
         })
-        .catch(function(err) {
+        .catch(function (err) {
             console.error('Failed to start recording:', err);
         });
 }
@@ -189,13 +208,31 @@ function sendAudioData() {
         }
     })
         .then(function (response) {
-            // 根据您的具体后端逻辑进行处理，例如显示机器人的回复
+            let userText = response.data.conversation.prompt;
+            // 发送到 /chat/chat_with_openai/ 路由获取OpenAI的响应
+            axios.post('/chat/chat_with_openai/', {
+                text: userText
+            }, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+                .then(function (responseOpenAI) {
+                    let botResponse = responseOpenAI.data.conversation.response;
+                    let chatDisplay = document.getElementById("chat-display");
+                    let botMessage = document.createElement("p");
+                    botMessage.innerText = "Bot: " + botResponse;
+                    chatDisplay.appendChild(botMessage);
+                })
+                .catch(function (error) {
+                    console.error('Failed to get OpenAI response:', error);
+                });
+
+            recordedChunks = [];
         })
         .catch(function (error) {
             console.error('Failed to send audio data:', error);
         });
-
-    recordedChunks = [];
 }
 
 document.getElementById("voice-button").onclick = function () {

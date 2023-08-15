@@ -36,7 +36,6 @@ def homepage(request):
                 topic_data = {
                     'id': topic.id,
                     'theme': topic.theme,
-                    'created_at': topic.created_at.strftime('%Y-%m-%d %H:%M:%S')
                 }
                 topic_list.append(topic_data)
         print("homepage() method is handling AJAX request and return JsonResponse({'topics': topic_list})")
@@ -67,13 +66,12 @@ def create_chat(request):
     topic_data = {
         'id': new_topic.id,
         'theme': new_topic.theme,
-        'created_at': new_topic.created_at.strftime('%Y-%m-%d %H:%M:%S')
     }
     return JsonResponse({'topic': topic_data})
 
 
 @csrf_exempt
-def change_theme(request):
+def change_topic(request):
     """
     期望的接收值:
     - POST请求。
@@ -163,7 +161,6 @@ def receive_text(request):
             topic_data = {
                 'id': new_topic.id,
                 'theme': new_topic.theme,
-                'created_at': new_topic.created_at.strftime('%Y-%m-%d %H:%M:%S')
             }
             return JsonResponse({
                 'type': 'new_topic',
@@ -189,6 +186,7 @@ def receive_audio(request):
     - 成功: 返回转换后的文本以及相关话题数据的JSON响应。
     - 失败: 返回一个表示错误的JSON响应。
     """
+    print("receive_audio is running...")
     if request.method == "POST":
         token = request.COOKIES.get('token')
         user = obtain_user(token)
@@ -201,6 +199,7 @@ def receive_audio(request):
             if not topic:  # 如果通过ID找不到主题对象，则返回错误
                 return JsonResponse({'error': 'Topic not found'}, status=400)
 
+            print("audio file is handling...")
             # 进行音频处理
             audio_file = request.FILES['audio']
             converted_audio_file = convert_audio_format(audio_file)
@@ -216,7 +215,7 @@ def receive_audio(request):
                     'id': conversation.id,
                     'prompt': conversation.prompt,
                     'response': conversation.response,
-                    'created_at': conversation.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                    'created_time': conversation.created_time.strftime('%Y-%m-%d %H:%M:%S')
                 },
                 'type': 'existing_topic'
             }
@@ -227,6 +226,7 @@ def receive_audio(request):
             topic.save()
             request.session['topic_id'] = topic.id
 
+            print("audio file is handling...")
             # 进行音频处理
             audio_file = request.FILES['audio']
             converted_audio_file = convert_audio_format(audio_file)
@@ -242,12 +242,11 @@ def receive_audio(request):
                     'id': conversation.id,
                     'prompt': conversation.prompt,
                     'response': conversation.response,
-                    'created_at': conversation.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                    'created_time': conversation.created_time.strftime('%Y-%m-%d %H:%M:%S')
                 },
                 'topic': {
                     'id': topic.id,
                     'theme': topic.theme,
-                    'created_at': topic.created_at.strftime('%Y-%m-%d %H:%M:%S')
                 },
                 'type': 'new_topic'
             }
@@ -273,18 +272,23 @@ def chat_with_openai(request):
         # 获取当前的topic_id
         topic_id = request.session.get('topic_id')
         # 1.获取历史聊天语境
-        context = obtain_context(topic_id=topic_id)
+        message = obtain_context(topic_id)
         # 2.将prompt与context结合以创建新的message
-        message = context.append({"role": "user", "content": prompt})
+        message.append({"role": "user", "content": prompt})
         # 3.向openai发送请求并得到响应
         response = obtain_openai_response(message)
         # 4.将响应结果保存到数据库中
-        # 获取当前的User和theme
         latest_conversation = Conversation.objects.filter(topic_id=topic_id).order_by('-created_time').first()
         latest_conversation.response = response
         latest_conversation.save()
-        # TODO 5.如果该topic下的conversation达到20的倍数,则尝试异步地更新context
-
-        # TODO 6.将响应结果返回给前端(如果有可能,将响应结果转为语音后同步发送给前端)
-        return JsonResponse({'response': response})
+        # TODO 5.如果该topic下的conversation达到20的倍数,则尝试异步地更新context(目前异步更新context的功能还未实现
+        asynchronously_update_context(topic_id, message, latest_conversation)
+        # 6.将响应结果返回给前端(如果有可能,将响应结果转为语音后同步发送给前端)
+        response_data = {
+            'id': latest_conversation.id,
+            'prompt': latest_conversation.prompt,
+            'response': latest_conversation.response,
+            'created_time': latest_conversation.created_time.strftime('%Y-%m-%d %H:%M:%S')
+        }
+        return JsonResponse({'conversation': response_data})
     return JsonResponse({'error': 'Invalid request'}, status=400)
