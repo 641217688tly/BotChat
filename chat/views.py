@@ -270,19 +270,21 @@ def chat_with_openai(request):
     if request.method == 'POST':
         # 从前端获取prompt
         prompt = json.loads(request.body.decode('utf-8'))['text']
-        print("prompt: " + prompt)
-        # TODO 1.获取历史聊天记录
-        context = obtain_context()
-        # TODO 2.创建新的message
-        messages = joint_message(context, prompt)
-        # TODO 3.向openai发送请求并得到响应
-        response = obtain_openai_response(messages)
-        # TODO 4.将响应结果保存到数据库中
-        # 获取当前的User和theme
+        # 获取当前的topic_id
         topic_id = request.session.get('topic_id')
+        # 1.获取历史聊天语境
+        context = obtain_context(topic_id=topic_id)
+        # 2.将prompt与context结合以创建新的message
+        message = context.append({"role": "user", "content": prompt})
+        # 3.向openai发送请求并得到响应
+        response = obtain_openai_response(message)
+        # 4.将响应结果保存到数据库中
+        # 获取当前的User和theme
         latest_conversation = Conversation.objects.filter(topic_id=topic_id).order_by('-created_time').first()
         latest_conversation.response = response
         latest_conversation.save()
-        # TODO 5.将响应结果返回给前端(如果有可能,将响应结果转为语音后同步发送给前端)
+        # TODO 5.如果该topic下的conversation达到20的倍数,则尝试异步地更新context
+
+        # TODO 6.将响应结果返回给前端(如果有可能,将响应结果转为语音后同步发送给前端)
         return JsonResponse({'response': response})
     return JsonResponse({'error': 'Invalid request'}, status=400)
