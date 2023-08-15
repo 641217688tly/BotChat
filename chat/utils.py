@@ -8,7 +8,7 @@ with open('config.yml', 'r', encoding='utf-8') as file:
     config = yaml.safe_load(file)
 # 从配置中获取JWT密钥
 OPENAI_API_KEY = config['OPENAI_API_KEY']
-UPDATE_CONTEXT_THRESHOLD = 20 # 规定了更新context的阈值,即当theme的聊天记录达到5条时,就更新context
+UPDATE_CONTEXT_THRESHOLD = 20 # 规定了更新context的阈值,即当theme的聊天记录达到20条时,就更新context
 
 def transcribe_audio(audio_file_path):
     model_size = "large-v2"

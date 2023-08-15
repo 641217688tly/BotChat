@@ -8,6 +8,17 @@ from django.shortcuts import redirect
 
 @csrf_exempt
 def login(request):
+    """用户登录视图。
+    该视图功能包括：
+    - GET请求：展示登录页面。
+    - POST请求：验证用户提供的用户名和密码，并生成对应的token。
+    如果用户名和密码验证成功，视图将返回带有token的JSON响应，同时将token作为cookie存储。
+    如果验证失败，返回错误信息。
+    Args:
+    - request (HttpRequest): Django请求对象。
+    Returns:
+    - HttpResponse: 根据情况返回的反馈消息。
+    """
     print("login method is running...")
     # 检查cookie中是否有token
     # token = request.COOKIES.get('token')
@@ -37,6 +48,17 @@ def login(request):
 
 @csrf_exempt
 def register(request):
+    """用户注册视图。
+    该视图功能包括：
+    - GET请求：展示注册页面。
+    - POST请求：基于用户提供的数据创建新的用户账号。
+    在用户提交注册数据时，视图会检查用户名或电子邮件是否已存在。
+    如果验证通过，新的用户会被创建并保存。
+    Args:
+    - request (HttpRequest): Django请求对象。
+    Returns:
+    - HttpResponse: 根据情况返回的反馈响应。
+    """
     print("register method is running...")
     if request.method == 'GET':
         return render(request, 'user/register.html')

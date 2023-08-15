@@ -14,6 +14,16 @@ from chat.models import *
 
 @csrf_exempt
 def homepage(request):
+    """
+       期望的接收值:
+       - 无特定参数，只接收一个常规的HTTP请求。可能包括一个有效的'X-Requested-With' header，表示一个AJAX请求。
+       功能介绍:
+       - 如果是一个AJAX请求并且用户通过token验证, 会获取该用户所有的话题并返回。
+       - 如果不是AJAX请求，则渲染一个页面给前端。
+       返回值:
+       - 如果是AJAX请求: 返回一个包含用户所有话题(topics)的JSON响应。
+       - 否则: 返回一个渲染好的页面。
+       """
     print("homepage() method is running...")
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         print("homepage() method is handling AJAX request...")
@@ -37,6 +47,15 @@ def homepage(request):
 
 @csrf_exempt
 def create_chat(request):
+    """
+    期望的接收值:
+    - 无特定参数，仅从cookie中获取token以校验和获取User对象。
+    功能介绍:
+    - 根据token确定用户身份并为其创建新的话题。
+    返回值:
+    - 成功: 返回新创建话题的相关数据的JSON响应。
+    - 失败: 返回一个表示错误的JSON响应。
+    """
     token = request.COOKIES.get('token')  # 获取cookie中的token
     user = obtain_user(token)
     if not user:
@@ -55,6 +74,17 @@ def create_chat(request):
 
 @csrf_exempt
 def change_theme(request):
+    """
+    期望的接收值:
+    - POST请求。
+    - 从cookie中获取token。
+    - POST data应该包含一个'topic_id'字段。
+    功能介绍:
+    - 切换到给定的话题并为前端提供与该话题相关的所有对话记录。
+    返回值:
+    - 成功: 返回一个包含所有相关对话记录的JSON响应。
+    - 失败: 返回一个表示错误的JSON响应。
+    """
     if request.method == 'POST':
         token = request.COOKIES.get('token', None)
         # 通过 token 获取用户对象
@@ -87,6 +117,16 @@ def change_theme(request):
 
 @csrf_exempt
 def receive_text(request):
+    """
+    期望的接收值:
+    - POST请求。
+    - JSON格式的请求体，包含一个"text"字段。
+    功能介绍:
+    - 获取用户提供的文本并保存为一个对话(Conversation)。如果用户没有选择话题(即Session中没有topic_id)，则为其创建一个新话题(Topic)。
+    返回值:
+    - 成功: 返回相关的对话和话题数据。
+    - 失败: 返回一个表示错误的JSON响应。
+    """
     if request.method == "POST":
         token = request.COOKIES.get('token')
         user = obtain_user(token)
@@ -139,6 +179,16 @@ def receive_text(request):
 
 @csrf_exempt
 def receive_audio(request):
+    """
+    期望的接收值:
+    - POST请求。
+    - 包含音频文件。
+    功能介绍:
+    - 将音频文件转换为文本并保存为一个对话(Conversation)。如需要，会为用户创建新话题(Topic)。
+    返回值:
+    - 成功: 返回转换后的文本以及相关话题数据的JSON响应。
+    - 失败: 返回一个表示错误的JSON响应。
+    """
     if request.method == "POST":
         token = request.COOKIES.get('token')
         user = obtain_user(token)
@@ -207,6 +257,16 @@ def receive_audio(request):
 
 @csrf_exempt
 def chat_with_openai(request):
+    """
+    期望的接收值:
+    - POST请求。
+    - JSON格式的请求体，包含一个"text"字段表示用户的提示。
+    功能介绍:
+    - 使用提供的提示与OpenAI聊天，并保存OpenAI的响应为一个对话。
+    返回值:
+    - 成功: 返回OpenAI的响应的JSON格式。
+    - 失败: 返回一个表示错误的JSON响应。
+    """
     if request.method == 'POST':
         # 从前端获取prompt
         prompt = json.loads(request.body.decode('utf-8'))['text']
