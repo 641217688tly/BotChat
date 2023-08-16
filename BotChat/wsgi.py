@@ -18,6 +18,6 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "BotChat.settings")
 
 application = get_wsgi_application()
 
-load_whisper_model() # 在服务器启动时加载模型
+load_whisper_model() # 在服务器启动时加载faster-whisper模型
 
 load_config_constant() # 在服务器启动时加载配置文件
