@@ -10,9 +10,11 @@ UPDATE_CONTEXT_THRESHOLD = None  # 规定了更新context的阈值,即当theme�
 BOT_ROLE_CONFIG = None
 
 def load_whisper_model():  # 实现模型的预加载
+    print("load_whisper_model method is called, model is loading...This model is 2.9G in size and will take 3-5 minutes to download for the first time access.")
     global WHISPER_MODEL
     model_size = "large-v2"
     WHISPER_MODEL = WhisperModel(model_size, device="cuda", compute_type="float16")
+    print("Model successfully loaded!")
 
 
 def load_config_constant():  # 加载YAML配置文件
@@ -93,13 +95,17 @@ def asynchronously_update_context(topic_id, message, latest_conversation):  # TO
         topic.save()
 
 
-def obtain_openai_response(message):  # 接收message,向openai发送请求并得到响应
+def obtain_openai_response(message):
     openai.api_key = OPENAI_API_KEY
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=message,
-    )
-    return response.choices[0].message['content'].strip()
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=message,
+        )
+        return response.choices[0].message['content'].strip()
+    except (Exception):
+        return "Error: Response timed out, please check your network connection!"
+
 
 # def transcribe_audio(audio_file_path):
 #     model = whisper.load_model("medium").to("cuda")  # 加载medium模型并将其放到GPU上
