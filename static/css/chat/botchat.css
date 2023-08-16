@@ -64,3 +64,19 @@ body, html {
     background-color: red;
     color: white;  /* 这是按钮上的文字颜色，可以根据您的设计调整 */
 }
+
+.bot-message {
+    background-color: #f1f1f1; /* 灰白色 */
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 5px;
+}
+
+.user-message {
+    background-color: #555; /* 深灰色 */
+    color: white; /* 因为背景是深色，所以设置文本颜色为白色以确保可读性 */
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 5px;
+}
+

@@ -292,3 +292,7 @@ def chat_with_openai(request):
         }
         return JsonResponse({'conversation': response_data})
     return JsonResponse({'error': 'Invalid request'}, status=400)
+
+
+
+

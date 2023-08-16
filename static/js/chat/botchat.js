@@ -101,6 +101,7 @@ function createNewChat() {
 
 // 处理文本输入
 var textInput = document.getElementById("text-input");
+
 textInput.addEventListener("keydown", function (event) {
     if (event.key === "Enter") {
         event.preventDefault();
@@ -114,19 +115,17 @@ textInput.addEventListener("keydown", function (event) {
             .then(function (response) {
                 let userText = response.data.conversation.prompt;
 
-                if (response.data.type === 'existing_topic') {
-                    let chatDisplay = document.getElementById("chat-display");
-                    let userMessage = document.createElement("p");
-                    userMessage.innerText = "You: " + userText;
-                    chatDisplay.appendChild(userMessage);
-                } else if (response.data.type === 'new_topic') {
+                let chatDisplay = document.getElementById("chat-display");
+                let userMessage = document.createElement("p");
+                userMessage.innerText = "You: " + userText;
+                userMessage.className = "user-message"; // 设置用户消息的CSS类
+                chatDisplay.appendChild(userMessage);
+
+                if (response.data.type === 'new_topic') {
                     let themeList = document.getElementById('chat-history');
                     let newThemeButton = createChatButton(response.data.topic);
                     themeList.insertBefore(newThemeButton, themeList.firstChild);
-                    let chatDisplay = document.getElementById("chat-display");
                     chatDisplay.innerHTML = '';  // 清空显示
-                    let userMessage = document.createElement("p");
-                    userMessage.innerText = "You: " + userText;
                     chatDisplay.appendChild(userMessage);
                 }
 
@@ -140,9 +139,9 @@ textInput.addEventListener("keydown", function (event) {
                 })
                     .then(function (responseOpenAI) {
                         let botResponse = responseOpenAI.data.conversation.response;
-                        let chatDisplay = document.getElementById("chat-display");
                         let botMessage = document.createElement("p");
                         botMessage.innerText = "Bot: " + botResponse;
+                        botMessage.className = "bot-message"; // 设置机器人消息的CSS类
                         chatDisplay.appendChild(botMessage);
                     })
                     .catch(function (error) {
@@ -156,6 +155,7 @@ textInput.addEventListener("keydown", function (event) {
             });
     }
 });
+
 
 
 let mediaRecorder;
@@ -217,6 +217,14 @@ function sendAudioData() {
     })
         .then(function (response) {
             let userText = response.data.conversation.prompt;
+
+            // 显示用户的语音输入（已转录为文本）到聊天界面
+            let chatDisplay = document.getElementById("chat-display");
+            let userMessage = document.createElement("p");
+            userMessage.innerText = "You: " + userText;
+            userMessage.className = "user-message"; // 设置用户消息的CSS类
+            chatDisplay.appendChild(userMessage);
+
             // 发送到 /chat/chat_with_openai/ 路由获取OpenAI的响应
             axios.post('/chat/chat_with_openai/', {
                 text: userText
@@ -227,20 +235,23 @@ function sendAudioData() {
             })
                 .then(function (responseOpenAI) {
                     let botResponse = responseOpenAI.data.conversation.response;
-                    let chatDisplay = document.getElementById("chat-display");
                     let botMessage = document.createElement("p");
                     botMessage.innerText = "Bot: " + botResponse;
+                    botMessage.className = "bot-message"; // 设置机器人消息的CSS类
                     chatDisplay.appendChild(botMessage);
                 })
                 .catch(function (error) {
                     console.error('Failed to get OpenAI response:', error);
                 });
+
             recordedChunks = [];
         })
         .catch(function (error) {
             console.error('Failed to send audio data:', error);
         });
 }
+
+
 
 
 document.getElementById("voice-button").onclick = function () {
