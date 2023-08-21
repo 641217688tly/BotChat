@@ -1,82 +1,72 @@
-import json
-from django.contrib.auth import authenticate
-from django.http import JsonResponse
-from django.shortcuts import render
-from django.views.decorators.csrf import csrf_exempt
+from rest_framework.response import Response
+from user.serializers import UserSerializer
 from user.utils import *
-from django.shortcuts import redirect
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework import status
+from django.contrib.auth.hashers import make_password, check_password
 
-@csrf_exempt
+
+@api_view(['POST'])
+@permission_classes([])
 def login(request):
-    """用户登录视图。
-    该视图功能包括：
-    - GET请求：展示登录页面。
-    - POST请求：验证用户提供的用户名和密码，并生成对应的token。
-    如果用户名和密码验证成功，视图将返回带有token的JSON响应，同时将token作为cookie存储。
-    如果验证失败，返回错误信息。
-    Args:
-    - request (HttpRequest): Django请求对象。
-    Returns:
-    - HttpResponse: 根据情况返回的反馈消息。
     """
-    print("login method is running...")
-    # 检查cookie中是否有token
-    # token = request.COOKIES.get('token')
-    # if token and judge_token(token):
-    #     # token有效，重定向用户到/chat/homepage/
-    #     return redirect('/chat/homepage/')
-    if request.method == 'GET':
-        return render(request, 'user/login.html')
-    if request.method == 'POST':
-        data = json.loads(request.body.decode('utf-8'))
-        username = data['username']
-        password = data['password']
-        user = authenticate(username=username, password=password)
-        if user is not None:
-            token = generate_token(user)
-            response_data = {'status': 20041, 'data': {'token': token}, 'msg': 'Login successful'}
-            response = JsonResponse(response_data)
-            # 设置cookie，并设置有效期为2周
-            max_age = 14 * 24 * 60 * 60
-            response.set_cookie('token', token, max_age=max_age, httponly=True)
-            return response
+    用户登录视图。
+    该视图接受POST请求，根据用户提供的用户名和密码进行验证。
+    如果用户名和密码匹配：
+    - 返回用户信息的JSON响应。
+    如果验证失败：
+    - 返回错误信息。
+    Args:
+    - request (HttpRequest): 包含'username'和'password'键值对的请求对象。
+    Returns:
+    - Response:
+        * 若验证成功，返回用户信息并设置状态码为200。
+        * 若密码不正确，返回错误信息并设置状态码为401。
+        * 若用户不存在，返回错误信息并设置状态码为404。
+    """
+    try:
+        user = User.objects.get(username=request.data['username'])
+        if check_password(request.data['password'], user.password): # 采用rest_framework自带的check_password函数来将前端传入的用户密码进行加密后与数据库中的密码进行比对
+            return Response(UserSerializer(user).data, status=status.HTTP_200_OK)
         else:
-            response_data = {'status': 40041, 'msg': 'Invalid username or password'}
-            return JsonResponse(response_data)
-    return JsonResponse({'status': 405, 'msg': 'Method not allowed'}, status=405)
+            return Response({
+                'status': 'error',
+                'message': 'Incorrect password.'
+            }, status=status.HTTP_401_UNAUTHORIZED)
+    except User.DoesNotExist:
+        return Response({
+            'status': 'error',
+            'message': 'User does not exist.'
+        }, status=status.HTTP_404_NOT_FOUND)
 
 
-@csrf_exempt
+@api_view(['POST'])
+@permission_classes([])
 def register(request):
-    """用户注册视图。
-    该视图功能包括：
-    - GET请求：展示注册页面。
-    - POST请求：基于用户提供的数据创建新的用户账号。
-    在用户提交注册数据时，视图会检查用户名或电子邮件是否已存在。
-    如果验证通过，新的用户会被创建并保存。
-    Args:
-    - request (HttpRequest): Django请求对象。
-    Returns:
-    - HttpResponse: 根据情况返回的反馈响应。
     """
-    print("register method is running...")
-    if request.method == 'GET':
-        return render(request, 'user/register.html')
-    if request.method == "POST":
-        data = json.loads(request.body.decode('utf-8')) # 解析JSON数据
-        username = data.get('username')
-        email = data.get('email')
-        password = data.get('password')
+    用户注册视图。
+    该视图接受POST请求，基于用户提供的数据创建新的用户账号。
+    在用户提交注册数据时：
+    - 视图会检查用户名是否已存在。
+    - 如果用户名唯一且数据有效，新的用户会被创建并保存，密码会进行加密处理。
+    Args:
+    - request (HttpRequest): 包含'username', 'password'和'email'键值对的请求对象。
+    Returns:
+    - Response:
+        * 若创建成功，返回新用户信息并设置状态码为201。
+        * 若用户名已存在，返回错误信息并设置状态码为400。
+        * 若数据无效或有其他问题，返回错误信息并设置状态码为400。
+    """
+    user_serializer = UserSerializer(data=request.data)
+    if user_serializer.is_valid():
         # 检查用户名是否已存在
-        if User.objects.filter(username=username).exists():
-            return JsonResponse({'status': 40011, 'msg': 'Username already exists'})
-        # 检查电子邮件是否已存在
-        if User.objects.filter(email=email).exists():
-            return JsonResponse({'status': 40012, 'msg': 'Email already exists'})
-        # 创建并保存用户
-        user = User.objects.create_user(username=username, email=email, password=password)
-        user.save()
-        print("register method is running...user is saved")
-        return JsonResponse({'status': 20011, 'msg': 'Registration successful'})
-    return JsonResponse({'status': 400, 'msg': 'Bad Request'}, status=400)
-
+        if User.objects.filter(username=user_serializer.validated_data['username']).exists():
+            return Response({
+                'status': 'error',
+                'message': 'Username already exists.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        # 手动加密密码
+        user_serializer.validated_data['password'] = make_password(user_serializer.validated_data['password']) # 将用户的密码进行单向加密后再存入数据库
+        user = user_serializer.save()
+        return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+    return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)

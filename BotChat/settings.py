@@ -36,9 +36,9 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    'rest_framework', # 添加rest_framework
     'user',
     'chat',
-
 ]
 
 MIDDLEWARE = [
@@ -170,3 +170,33 @@ LOGGING = {
 # 不使用Docker管理项目容器时采用如下配置方法来配置celery:
 CELERY_BROKER_URL = 'redis://localhost:6379/0' # 使用本地的 Redis
 CELERY_RESULT_BACKEND = 'redis://localhost:6379/0' # 使用 Redis 存储结果
+
+
+# DRF配置:
+REST_FRAMEWORK = {
+    'PAGE_SIZE': 25,
+    'DATE_FORMAT': '%Y-%m-%d %H:%M:%S',
+
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer'  # 为了方便开发和调试，保留了BrowsableAPIRenderer
+    ],
+
+    'DEFAULT_PARSER_CLASSES': [
+        'rest_framework.parsers.JSONParser',
+        'rest_framework.parsers.MultiPartParser',  # 因为要处理音频文件上传
+        'rest_framework.parsers.FormParser'  # 可处理表单数据
+    ],
+
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated', # 默认权限，意味着只有经过身份验证的用户才可以访问API视图
+    ],
+
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'user.utils.authentication.JWTAuthentication',  # JWT身份验证应该是首选
+        'rest_framework.authentication.SessionAuthentication',  # Django的session认证，如果您使用Django的登录系统也可以保留
+        'rest_framework.authentication.TokenAuthentication',  # Token身份验证
+        'rest_framework.authentication.BasicAuthentication',  # 基本的HTTP认证，通常在开发环境中使用
+    ],
+}
+
