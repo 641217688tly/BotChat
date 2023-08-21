@@ -252,8 +252,6 @@ function sendAudioData() {
 }
 
 
-
-
 document.getElementById("voice-button").onclick = function () {
     if (mediaRecorder && mediaRecorder.state === "recording") {
         stopRecording();

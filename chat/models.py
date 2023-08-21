@@ -18,6 +18,8 @@ class Conversation(models.Model):
     created_time = models.DateTimeField(auto_now_add=True)  # 只在对象首次创建时设置
     prompt = models.TextField(blank=True)  # 用户的提问
     response = models.TextField(blank=True)  # bot的回复
+    prompt_audio = models.BinaryField(blank=True, null=True)  # 用户的语音提问
+    response_audio = models.BinaryField(blank=True, null=True)  # bot的回复语音
     class Meta:
         db_table = 'conversations'
         ordering = ['created_time']  # 按创建时间排序

@@ -1,8 +1,17 @@
+import os
+import shutil
+import tempfile
+
 import openai
 import yaml
+
+from chat.celery import app
 from chat.models import *
 from faster_whisper import WhisperModel
 from pydub import AudioSegment
+
+
+# 与加载模型和参数相关的函数:-----------------------------------------------------------------------------------------------
 
 WHISPER_MODEL = None
 OPENAI_API_KEY = None
@@ -16,7 +25,6 @@ def load_whisper_model():  # 实现模型的预加载
     WHISPER_MODEL = WhisperModel(model_size, device="cuda", compute_type="float16")
     print("Model successfully loaded!")
 
-
 def load_config_constant():  # 加载YAML配置文件
     global OPENAI_API_KEY, UPDATE_CONTEXT_THRESHOLD, BOT_ROLE_CONFIG
     # 加载YAML配置文件
@@ -26,6 +34,22 @@ def load_config_constant():  # 加载YAML配置文件
     OPENAI_API_KEY = config['OPENAI_API_KEY']
     UPDATE_CONTEXT_THRESHOLD = config['UPDATE_CONTEXT_THRESHOLD']
     BOT_ROLE_CONFIG = config['BOT_ROLE_CONFIG']
+
+
+# 与语音识别转录相关的函数:-------------------------------------------------------------------------------------------------
+
+
+def audio_to_text(mp3_audio_file):
+    """
+    Transcribes an audio file and returns the transcribed text.
+    """
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_audio_path = os.path.join(temp_dir, 'temp_audio.mp3')
+        with open(temp_audio_path, 'wb') as temp_file:
+            shutil.copyfileobj(mp3_audio_file, temp_file)
+        transcribed_text = transcribe_audio(temp_audio_path)
+    return transcribed_text
+
 
 def transcribe_audio(audio_file_path):
     global WHISPER_MODEL
@@ -37,16 +61,6 @@ def transcribe_audio(audio_file_path):
     return transcription
 
 
-# def transcribe_audio(audio_file_path):
-#     model_size = "large-v2"
-#     model = WhisperModel(model_size, device="cuda", compute_type="float16")
-#     # TODO 或许可以在Session开启时/服务器启动时就加载模型,这样可以避免每次都加载模型的时间开销
-#     segments, info = model.transcribe(audio_file_path, beam_size=5)
-#     segments = list(segments)
-#     transcription = ' '.join([segment.text for segment in segments])
-#     return transcription
-
-
 def convert_audio_format(audio_file, target_format='mp3'):  # 将前端传来的音频文件转换为mp3格式
     # 此处可添加转换音频格式的代码
     audio_segment = AudioSegment.from_file(audio_file)
@@ -54,6 +68,8 @@ def convert_audio_format(audio_file, target_format='mp3'):  # 将前端传来的
     print("converted_audio_file method is called")
     return converted_audio_file
 
+
+# 与openAI交互相关的函数:--------------------------------------------------------------------------------------------------
 
 def obtain_context(topic_id):  # 创建context
     context = [
@@ -65,8 +81,7 @@ def obtain_context(topic_id):  # 创建context
     if topic_context != '':  # 如果context不为空(即conversation的数大于20),则将context添加到message中
         context.append({"role": "system", "content": topic_context})
     conversations = topic.conversations.all()
-    summarized_conversation_range = ((
-                                             conversations.count() - 1) // UPDATE_CONTEXT_THRESHOLD) * UPDATE_CONTEXT_THRESHOLD  # 计算context所总结的conversation的范围,如果conversations.count()=0,结果也为0
+    summarized_conversation_range = (( conversations.count() - 1) // UPDATE_CONTEXT_THRESHOLD) * UPDATE_CONTEXT_THRESHOLD  # 计算context所总结的conversation的范围,如果conversations.count()=0,结果也为0
     remainder = conversations.count() - summarized_conversation_range  # 计算未被总结进context的conversation的个数
     if remainder > 0:
         # 获取最后的remainder条对话
@@ -107,16 +122,26 @@ def obtain_openai_response(message):
         return "Error: Response timed out, please check your network connection!"
 
 
-# def transcribe_audio(audio_file_path):
-#     model = whisper.load_model("medium").to("cuda")  # 加载medium模型并将其放到GPU上
-#     result = model.transcribe(audio_file_path, fp16=False)
-#     transcription = result["text"]
-#     return transcription
-#
-#
-# def convert_audio_format(audio_file, target_format='mp3'):
-#     # 将前端传来的音频文件转换为mp3格式
-#     audio_segment = AudioSegment.from_file(audio_file)
-#     converted_audio_file = audio_segment.export(format=target_format)
-#     print("converted_audio_file method is called")
-#     return converted_audio_file
+# 数据库增删改查:---------------------------------------------------------------------------------------------------------
+
+def asynchronously_save_audio_to_db(conversation_id, mp3_audio_file): # 由于存储大数据量的MP3文件耗时较多,因此选择异步地将音频文件保存到数据库中
+    # 利用conversation_id获取conversation对象
+    conversation = Conversation.objects.get(id=conversation_id)
+    # 将mp3_audio_file存入conversation对象的prompt_audio字段中
+    conversation.prompt_audio = mp3_audio_file
+    # 保存conversation对象
+    conversation.save()
+
+
+# @app.task #TODO 利用Celery实现异步存储音频文件,由于Docker尚未成功配置,因此暂时不使用Celery
+# def asynchronously_save_audio_to_db(conversation_id, mp3_audio_file): # 由于存储大数据量的MP3文件耗时较多,因此选择异步地将音频文件保存到数据库中
+#     # 利用conversation_id获取conversation对象
+#     conversation = Conversation.objects.get(id=conversation_id)
+#     # 将mp3_audio_file存入conversation对象的prompt_audio字段中
+#     conversation.prompt_audio = mp3_audio_file
+#     # 保存conversation对象
+#     conversation.save()
+
+
+
+

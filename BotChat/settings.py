@@ -78,17 +78,30 @@ WSGI_APPLICATION = "BotChat.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+
+# 在使用Docker来管理项目的各个容器时使用以下配置:
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': 'botchat',
+#         'USER': 'root',
+#         'PASSWORD': '20030207TLY',
+#         'HOST': 'db',  # 这里更改为'db'
+#         'PORT': 3306,
+#     }
+# }
+
 DATABASES = {
-    # 使用mysql数据库
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'botchat',
         'USER': 'root',
         'PASSWORD': '20030207TLY',
-        'HOST': '127.0.0.1',
+        'HOST': 'localhost',
         'PORT': 3306,
     }
 }
+
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -151,3 +164,11 @@ LOGGING = {
         },
     },
 }
+
+# 使用Docker管理项目容器时采用如下配置方法来配置celery:
+# CELERY_BROKER_URL = 'redis://redis:6379/0' # 使用本地的 Redis
+# CELERY_RESULT_BACKEND = 'redis://redis:6379/0' # 使用 Redis 存储结果
+
+# 不使用Docker管理项目容器时采用如下配置方法来配置celery:
+CELERY_BROKER_URL = 'redis://localhost:6379/0' # 使用本地的 Redis
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0' # 使用 Redis 存储结果

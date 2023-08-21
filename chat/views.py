@@ -1,7 +1,4 @@
 import json
-import os
-import shutil
-import tempfile
 
 from django.utils import timezone
 from django.shortcuts import render
@@ -198,18 +195,14 @@ def receive_audio(request):
             topic = Topic.objects.filter(id=topic_id).first()
             if not topic:  # 如果通过ID找不到主题对象，则返回错误
                 return JsonResponse({'error': 'Topic not found'}, status=400)
-
-            print("audio file is handling...")
             # 进行音频处理
             audio_file = request.FILES['audio']
-            converted_audio_file = convert_audio_format(audio_file)
-            with tempfile.TemporaryDirectory() as temp_dir:
-                temp_audio_path = os.path.join(temp_dir, 'temp_audio.mp3')
-                with open(temp_audio_path, 'wb') as temp_file:
-                    shutil.copyfileobj(converted_audio_file, temp_file)
-                transcribed_text = transcribe_audio(temp_audio_path)
-                conversation = Conversation(topic=topic, prompt=transcribed_text)
-                conversation.save()
+            converted_audio_file = convert_audio_format(audio_file) # 转换音频格式为MP3(在前端实现MP3格式转换后该步骤可以省略)
+            transcribed_text = audio_to_text(converted_audio_file) # 将音频转换为文本
+            conversation = Conversation(topic=topic, prompt=transcribed_text)
+            conversation.save()
+            # asynchronously_save_audio_to_db.delay(conversation.id, converted_audio_file) #TODO 利用Celery实现异步存储音频文件,由于Docker尚未成功配置,因此暂时不使用Celery
+            asynchronously_save_audio_to_db(conversation.id, converted_audio_file)
             response_data = {
                 'conversation': {
                     'id': conversation.id,
@@ -225,18 +218,14 @@ def receive_audio(request):
             topic = Topic.objects.create(user=user, theme=theme_name)
             topic.save()
             request.session['topic_id'] = topic.id
-
-            print("audio file is handling...")
             # 进行音频处理
             audio_file = request.FILES['audio']
-            converted_audio_file = convert_audio_format(audio_file)
-            with tempfile.TemporaryDirectory() as temp_dir:
-                temp_audio_path = os.path.join(temp_dir, 'temp_audio.mp3')
-                with open(temp_audio_path, 'wb') as temp_file:
-                    shutil.copyfileobj(converted_audio_file, temp_file)
-                transcribed_text = transcribe_audio(temp_audio_path)
-                conversation = Conversation(topic=topic, prompt=transcribed_text)
-                conversation.save()
+            converted_audio_file = convert_audio_format(audio_file) # 转换音频格式为MP3(在前端实现MP3格式转换后该步骤可以省略)
+            transcribed_text = audio_to_text(converted_audio_file) # 将音频转换为文本
+            conversation = Conversation(topic=topic, prompt=transcribed_text)
+            conversation.save()
+            # asynchronously_save_audio_to_db.delay(conversation.id, converted_audio_file) #TODO 利用Celery实现异步存储音频文件,由于Docker尚未成功配置,因此暂时不使用Celery
+            asynchronously_save_audio_to_db(conversation.id, converted_audio_file)
             response_data = {
                 'conversation': {
                     'id': conversation.id,
@@ -294,5 +283,82 @@ def chat_with_openai(request):
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
 
+# @csrf_exempt
+# def receive_audio(request):
+#     """
+#     期望的接收值:
+#     - POST请求。
+#     - 包含音频文件。
+#     功能介绍:
+#     - 将音频文件转换为文本并保存为一个对话(Conversation)。如需要，会为用户创建新话题(Topic)。
+#     返回值:
+#     - 成功: 返回转换后的文本以及相关话题数据的JSON响应。
+#     - 失败: 返回一个表示错误的JSON响应。
+#     """
+#     print("receive_audio is running...")
+#     if request.method == "POST":
+#         token = request.COOKIES.get('token')
+#         user = obtain_user(token)
+#         if user is None:  # 检查从token中获取的用户对象是否存在
+#             return JsonResponse({'error': 'Invalid user'}, status=400)
+#
+#         topic_id = request.session.get('topic_id')  # 从session中获取topic_id
+#         if topic_id:  # Session中存在topic_id,说明用户已经选择了主题
+#             topic = Topic.objects.filter(id=topic_id).first()
+#             if not topic:  # 如果通过ID找不到主题对象，则返回错误
+#                 return JsonResponse({'error': 'Topic not found'}, status=400)
+#             # 进行音频处理
+#             audio_file = request.FILES['audio']
+#             converted_audio_file = convert_audio_format(audio_file) # 转换音频格式为MP3(在前端实现MP3格式转换后该步骤可以省略)
+#
+#             #TODO 在utils.py中自定义函数,将(音频文件转换为文本)和(存储音频文件进数据库)这两个步骤封装起来
+#             with tempfile.TemporaryDirectory() as temp_dir:
+#                 temp_audio_path = os.path.join(temp_dir, 'temp_audio.mp3')
+#                 with open(temp_audio_path, 'wb') as temp_file:
+#                     shutil.copyfileobj(converted_audio_file, temp_file)
+#                 transcribed_text = transcribe_audio(temp_audio_path)
+#                 conversation = Conversation(topic=topic, prompt=transcribed_text)
+#                 conversation.save()
+#             response_data = {
+#                 'conversation': {
+#                     'id': conversation.id,
+#                     'prompt': conversation.prompt,
+#                     'response': conversation.response,
+#                     'created_time': conversation.created_time.strftime('%Y-%m-%d %H:%M:%S')
+#                 },
+#                 'type': 'existing_topic'
+#             }
+#         else:  # Session中不存在topic_id,说明用户还未选择主题,此时需要帮用户创建新的主题
+#             current_time = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
+#             theme_name = f"{user.username}:{current_time}"
+#             topic = Topic.objects.create(user=user, theme=theme_name)
+#             topic.save()
+#             request.session['topic_id'] = topic.id
+#             # 进行音频处理
+#             audio_file = request.FILES['audio']
+#             converted_audio_file = convert_audio_format(audio_file) # 转换音频格式为MP3(在前端实现MP3格式转换后该步骤可以省略)
+#             # TODO 在utils.py中自定义函数,将(音频文件转换为文本)和(存储音频文件进数据库)这两个步骤封装起来
+#             with tempfile.TemporaryDirectory() as temp_dir:
+#                 temp_audio_path = os.path.join(temp_dir, 'temp_audio.mp3')
+#                 with open(temp_audio_path, 'wb') as temp_file:
+#                     shutil.copyfileobj(converted_audio_file, temp_file)
+#                 transcribed_text = transcribe_audio(temp_audio_path)
+#                 conversation = Conversation(topic=topic, prompt=transcribed_text)
+#                 conversation.save()
+#             response_data = {
+#                 'conversation': {
+#                     'id': conversation.id,
+#                     'prompt': conversation.prompt,
+#                     'response': conversation.response,
+#                     'created_time': conversation.created_time.strftime('%Y-%m-%d %H:%M:%S')
+#                 },
+#                 'topic': {
+#                     'id': topic.id,
+#                     'theme': topic.theme,
+#                 },
+#                 'type': 'new_topic'
+#             }
+#         return JsonResponse(response_data)
+#     return JsonResponse({'error': 'Invalid request'}, status=400)
 
 
