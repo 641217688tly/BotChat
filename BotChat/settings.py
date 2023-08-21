@@ -25,8 +25,7 @@ SECRET_KEY = "django-insecure-j6hs!9g(qs%74-b41$)%%^)chn0i5hd#36srp$6bwheovh_a!h
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = ["*"] #TODO 在测试时使用，允许所有的主机访问;在部署上线前,应该更改为允许访问的主机的IP地址和域名(即我的云服务器的ip地址和我购买的域名)
 
 # Application definition
 
@@ -58,8 +57,7 @@ ROOT_URLCONF = "BotChat.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / 'templates'] # 由于不打算使用模板，所以应该可以注释掉这一行
-        ,
+        "DIRS": [], # 由于不打算使用模板，所以应该可以注释掉: BASE_DIR / 'templates'
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -125,7 +123,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "zh-hans"
 
 TIME_ZONE = "UTC"
 
