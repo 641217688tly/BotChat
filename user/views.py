@@ -3,12 +3,13 @@ from user.serializers import UserSerializer
 from user.utils import *
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.hashers import make_password, check_password
 
 
 @api_view(['POST'])
 @permission_classes([])
-def login(request):
+def login(request): # localhost/botchat/user/login
     """
     用户登录视图。
     该视图接受POST请求，根据用户提供的用户名和密码进行验证。
@@ -26,7 +27,8 @@ def login(request):
     """
     try:
         user = User.objects.get(username=request.data['username'])
-        if check_password(request.data['password'], user.password): # 采用rest_framework自带的check_password函数来将前端传入的用户密码进行加密后与数据库中的密码进行比对
+        if check_password(request.data['password'],
+                          user.password):  # 采用rest_framework自带的check_password函数来将前端传入的用户密码进行加密后与数据库中的密码进行比对
             return Response(UserSerializer(user).data, status=status.HTTP_200_OK)
         else:
             return Response({
@@ -42,7 +44,7 @@ def login(request):
 
 @api_view(['POST'])
 @permission_classes([])
-def register(request):
+def register(request): # localhost/botchat/user/register
     """
     用户注册视图。
     该视图接受POST请求，基于用户提供的数据创建新的用户账号。
@@ -66,7 +68,31 @@ def register(request):
                 'message': 'Username already exists.'
             }, status=status.HTTP_400_BAD_REQUEST)
         # 手动加密密码
-        user_serializer.validated_data['password'] = make_password(user_serializer.validated_data['password']) # 将用户的密码进行单向加密后再存入数据库
+        user_serializer.validated_data['password'] = make_password(
+            user_serializer.validated_data['password'])  # 将用户的密码进行单向加密后再存入数据库
         user = user_serializer.save()
         return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
     return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def change_user_info(request):
+    user_id = request.data.get('user_id')
+    username = request.data.get('username')
+    email = request.data.get('email')
+    password = request.data.get('password')
+
+    # 确保数据完整性
+    if (user_id and username and email and password) is None:
+        return Response({'error': 'Incomplete user data'}, status=400)
+    try:
+        # 获取对应的用户对象并更新信息
+        user = User.objects.get(id=user_id)
+        user.username = username
+        user.email = email
+        user.password = make_password(password)  # 使用Django的make_password方法对密码进行哈希处理
+        user.save()
+        return Response(UserSerializer(user).data, status=status.HTTP_200_OK)
+    except User.DoesNotExist:
+        return Response({'error': 'User does not exist'}, status=404)

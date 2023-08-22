@@ -1,12 +1,10 @@
 import shutil
 import tempfile
 from functools import partial
-
 import openai
 import yaml
 from faster_whisper import WhisperModel
 from pydub import AudioSegment
-
 from chat.models import *
 
 # 与加载模型和参数相关的函数:-----------------------------------------------------------------------------------------------
@@ -126,11 +124,11 @@ def obtain_openai_response(message):
 
 # 数据库增删改查:---------------------------------------------------------------------------------------------------------
 
-def asynchronously_save_audio_to_db(conversation_id, mp3_audio_file):  # 由于存储大数据量的MP3文件耗时较多,因此选择异步地将音频文件保存到数据库中
+def asynchronously_save_audio_to_db(conversation_id, audio_file):  # 由于存储大数据量的MP3文件耗时较多,因此选择异步地将音频文件保存到数据库中
     # 利用conversation_id获取conversation对象
     conversation = Conversation.objects.get(id=conversation_id)
     # 将mp3_audio_file存入conversation对象的prompt_audio字段中
-    conversation.prompt_audio = mp3_audio_file
+    conversation.prompt_audio = audio_file
     # 保存conversation对象
     conversation.save()
 
