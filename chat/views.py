@@ -75,7 +75,7 @@ def send_word(request):  # localhost/botchat/chat/sendword
     message = obtain_context(topic_id)  # 获取历史聊天语境
     message.append({"role": "user", "content": prompt})  # 将prompt与context结合以创建新的message
     response = obtain_openai_response(message)  # 向openai发送请求并得到响应
-    response_audio = None  # TODO 通过文本合成语音
+    response_audio = b''
     # TODO 创建一个以topic_id为外键的Conversation对象,将得到的prompt和response和response_audio存入数据库
     latest_conversation = Conversation.objects.create(
         topic=topic,
@@ -84,6 +84,9 @@ def send_word(request):  # localhost/botchat/chat/sendword
         response_audio=response_audio
     )
     latest_conversation.save()
+    # 我之前代码是直接在utils方法里，直接把audio生成并储存了，所以写在了这个创建后面
+    save_audio_from_xunfei(response, latest_conversation)  # 生成并保存音频
+    response_audio = convert_audio_to_base64(latest_conversation.response_audio)  # 读取数据库中的音频并转成base64格式
     asynchronously_update_context(topic_id, message, latest_conversation)  # 如果该topic下的conversation达到20的倍数,则尝试异步地更新context(目前异步更新context的功能还未实现)
     return Response({  # 返回响应
         'response_word': response,
@@ -124,7 +127,7 @@ def send_voice(request):  # localhost/botchat/chat/sendvoice
     message.append({"role": "user", "content": prompt})  # 将prompt与context结合以创建新的message
     response = obtain_openai_response(message)  # 向openai发送请求并得到响应
 
-    response_audio = None  # TODO 通过文本合成语音
+    response_audio = b''
     # 创建一个以topic_id为外键的Conversation对象
     conversation = Conversation.objects.create(
         topic=topic,
@@ -134,6 +137,8 @@ def send_voice(request):  # localhost/botchat/chat/sendvoice
         response_audio=response_audio
     )
     conversation.save()
+    save_audio_from_xunfei(response, conversation)  # 生成并保存音频
+    response_audio = convert_audio_to_base64(conversation.response_audio)  # 读取数据库中的音频并转成base64格式
     asynchronously_update_context(topic_id, message,
                                   conversation)  # 如果该topic下的conversation达到20的倍数,则尝试异步地更新context(目前异步更新context的功能还未实现)
     return Response({  # 返回响应
