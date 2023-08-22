@@ -272,11 +272,15 @@ def chat_with_openai(request):
         latest_conversation.save()
         # TODO 5.如果该topic下的conversation达到20的倍数,则尝试异步地更新context(目前异步更新context的功能还未实现
         asynchronously_update_context(topic_id, message, latest_conversation)
+        # 5.生成的文本答复对应的语音答复，并保存到数据库中
+        save_audio_from_xunfei(response, latest_conversation)
+        response_audio = convert_audio_to_base64(latest_conversation.response_audio)
         # 6.将响应结果返回给前端(如果有可能,将响应结果转为语音后同步发送给前端)
         response_data = {
             'id': latest_conversation.id,
             'prompt': latest_conversation.prompt,
             'response': latest_conversation.response,
+            'response_audio': response_audio,
             'created_time': latest_conversation.created_time.strftime('%Y-%m-%d %H:%M:%S')
         }
         return JsonResponse({'conversation': response_data})
@@ -360,5 +364,3 @@ def chat_with_openai(request):
 #             }
 #         return JsonResponse(response_data)
 #     return JsonResponse({'error': 'Invalid request'}, status=400)
-
-
