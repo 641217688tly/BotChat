@@ -15,7 +15,6 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
@@ -25,7 +24,7 @@ SECRET_KEY = "django-insecure-j6hs!9g(qs%74-b41$)%%^)chn0i5hd#36srp$6bwheovh_a!h
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["*"] #TODO 在测试时使用，允许所有的主机访问;在部署上线前,应该更改为允许访问的主机的IP地址和域名(即我的云服务器的ip地址和我购买的域名)
+ALLOWED_HOSTS = ["*"]  # TODO 在测试时使用，允许所有的主机访问;在部署上线前,应该更改为允许访问的主机的IP地址和域名(即我的云服务器的ip地址和我购买的域名)
 
 # Application definition
 
@@ -36,7 +35,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    'rest_framework', # 添加rest_framework
+    'rest_framework',  # 添加rest_framework
     'user',
     'chat',
 ]
@@ -47,7 +46,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "user.middleware.UserAuthenticationMiddleware",  # 这里添加您的中间件
+    # "user.middleware.UserAuthenticationMiddleware",  # 由于不打算使用JWT来实现用户认证，所以注释掉该中间件
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -57,7 +56,7 @@ ROOT_URLCONF = "BotChat.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [], # 由于不打算使用模板，所以应该可以注释掉: BASE_DIR / 'templates'
+        "DIRS": [],  # 由于不打算使用模板，所以应该可以注释掉: BASE_DIR / 'templates'
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -71,7 +70,6 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "BotChat.wsgi.application"
-
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
@@ -100,7 +98,6 @@ DATABASES = {
     }
 }
 
-
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
 
@@ -119,7 +116,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
@@ -131,12 +127,11 @@ USE_I18N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
 STATIC_URL = "/static/"
-STATICFILES_DIRS = [ # 静态文件目录,用于指定非static文件夹下的静态文件的位置
+STATICFILES_DIRS = [  # 静态文件目录,用于指定非static文件夹下的静态文件的位置
     BASE_DIR / 'static',
 ]
 
@@ -168,35 +163,29 @@ LOGGING = {
 # CELERY_RESULT_BACKEND = 'redis://redis:6379/0' # 使用 Redis 存储结果
 
 # 不使用Docker管理项目容器时采用如下配置方法来配置celery:
-CELERY_BROKER_URL = 'redis://localhost:6379/0' # 使用本地的 Redis
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0' # 使用 Redis 存储结果
-
+CELERY_BROKER_URL = 'redis://localhost:6379/0'  # 使用本地的 Redis
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'  # 使用 Redis 存储结果
 
 # DRF配置:
 REST_FRAMEWORK = {
     'PAGE_SIZE': 25,
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'DATE_FORMAT': '%Y-%m-%d %H:%M:%S',
-
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer'  # 为了方便开发和调试，保留了BrowsableAPIRenderer
     ],
-
     'DEFAULT_PARSER_CLASSES': [
         'rest_framework.parsers.JSONParser',
         'rest_framework.parsers.MultiPartParser',  # 因为要处理音频文件上传
         'rest_framework.parsers.FormParser'  # 可处理表单数据
     ],
-
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated', # 默认权限，意味着只有经过身份验证的用户才可以访问API视图
+        'rest_framework.permissions.IsAuthenticated',  # 默认权限，意味着只有经过身份验证的用户才可以访问API视图
     ],
-
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'user.utils.authentication.JWTAuthentication',  # JWT身份验证应该是首选
         'rest_framework.authentication.SessionAuthentication',  # Django的session认证，如果您使用Django的登录系统也可以保留
         'rest_framework.authentication.TokenAuthentication',  # Token身份验证
         'rest_framework.authentication.BasicAuthentication',  # 基本的HTTP认证，通常在开发环境中使用
     ],
 }
-
