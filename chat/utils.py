@@ -80,8 +80,7 @@ def obtain_context(topic_id):  # 创建context
     if topic_context != '':  # 如果context不为空(即conversation的数大于20),则将context添加到message中
         context.append({"role": "system", "content": topic_context})
     conversations = topic.conversations.all()
-    summarized_conversation_range = ((
-                                             conversations.count() - 1) // UPDATE_CONTEXT_THRESHOLD) * UPDATE_CONTEXT_THRESHOLD  # 计算context所总结的conversation的范围,如果conversations.count()=0,结果也为0
+    summarized_conversation_range = ((conversations.count() - 1) // UPDATE_CONTEXT_THRESHOLD) * UPDATE_CONTEXT_THRESHOLD  # 计算context所总结的conversation的范围,如果conversations.count()=0,结果也为0
     remainder = conversations.count() - summarized_conversation_range  # 计算未被总结进context的conversation的个数
     if remainder > 0:
         # 获取最后的remainder条对话
@@ -120,6 +119,16 @@ def obtain_openai_response(message):
         return response.choices[0].message['content'].strip()
     except (Exception):
         return "Error: Response timed out, please check your network connection!"
+
+
+# def user_defined_context():
+#     # 时间
+#     # 地点
+#     # 用户所扮演的角色
+#     # bot所扮演的角色
+#     # 自定义事件
+#     # 自定义先前对话
+#
 
 
 # 数据库增删改查:---------------------------------------------------------------------------------------------------------

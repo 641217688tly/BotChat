@@ -80,6 +80,7 @@ def receive_text(request):  # localhost/botchat/chat/sendword/
         topic=topic,
         prompt=prompt,
         response=response,
+        response_audio=b''
     )
     new_conversation.save()
     # TODO 语音合成时出现报错
@@ -127,8 +128,10 @@ def receive_audio(request):  # localhost/botchat/chat/sendvoice/
         topic=topic,
         prompt=prompt,
         response=response,
-        prompt_audio=prompt_audio,
+        prompt_audio=b'',
+        response_audio=b''
     )
+    new_conversation.prompt_audio = prompt_audio
     new_conversation.save()
     # TODO 语音合成时出现报错
     save_audio_from_xunfei(response, new_conversation)  # 生成并保存音频
