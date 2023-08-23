@@ -172,7 +172,7 @@ class Ws_Param(object):
         self.CommonArgs = {"app_id": self.APPID}
         # 业务参数，更多个性化参数可在官网查看
         # TODO 此处可继续定制发音人、音量、语速等，可考虑自定义（没钱）
-        self.BusinessArgs = {"aue": "lame", "auf": "audio/L16;rate=16000", "vcn": "x4_lingxiaoying_em_v2",
+        self.BusinessArgs = {"aue": "lame", "auf": "audio/L16;rate=16000", "vcn": "x2_enus_catherine",
                              "tte": "utf8", "sfl": 1, "speed": 30}
         self.Data = {"status": 2, "text": str(base64.b64encode(self.Text.encode('utf-8')), "UTF8")}
 
