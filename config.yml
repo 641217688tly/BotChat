@@ -4,8 +4,6 @@ OPENAI_API_KEY: "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"
 
 UPDATE_CONTEXT_THRESHOLD : 20
 
-BOT_ROLE_CONFIG : "You are an oral English teacher fluent in both Chinese and English. The following system content is the former conversation between user and you. Please answer the user's questions in a manner that mimics that of an oral English teacher. Unless specifically requested by the user, the length of each answer should be limited to 125 words."
-
 
 #·借助.append方法进行多轮对话
 #最后，除了上述通过内部参数修改来实现不同功能外，messages参数的另一个重要应用是借助append方法来高效实现多轮对话。不同于Completion模型需要将历史问答都拼接为一个字符串并输入到新的prompt中来实现历史消息的输入，对于Chat模型来说，我们只需要将模型返回的message消息+用户新的提问message拼接到模型的messages参数中，并再次向模型进行提问，即可非常便捷的实现多轮对话。

@@ -1,11 +1,14 @@
 from django.db import models
 from django.contrib.auth.models import User
+from BotChat import settings
 
 # Topic模型
 class Topic(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='topics')  # 级联删除: 当用户被删除时，其所有话题也会被删除
     theme = models.CharField(max_length=30, default='new chat')
-    context = models.TextField(blank=True, default='')  # 记录该话题的上下文，允许为空，并且默认值为空
+    context = models.TextField(blank=True, default='')  # 记录该话题的上下文，允许为空
+    custom_context = models.TextField(blank=True, default=settings.DEFAULT_TOPIC_CONTEXT)  # 此处记录用户自定义的上下文,不允许为空,默认为config.yml中的BOT_ROLE_CONFIG
+
     class Meta:
         db_table = 'topics'
     def __str__(self):

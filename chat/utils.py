@@ -12,8 +12,6 @@ from chat.models import *
 WHISPER_MODEL = None
 OPENAI_API_KEY = None
 UPDATE_CONTEXT_THRESHOLD = None  # 规定了更新context的阈值,即当theme的聊天记录达到20条时,就更新context
-BOT_ROLE_CONFIG = None
-
 
 def load_whisper_model():  # 实现模型的预加载
     print(
@@ -25,15 +23,13 @@ def load_whisper_model():  # 实现模型的预加载
 
 
 def load_config_constant():  # 加载YAML配置文件
-    global OPENAI_API_KEY, UPDATE_CONTEXT_THRESHOLD, BOT_ROLE_CONFIG
+    global OPENAI_API_KEY, UPDATE_CONTEXT_THRESHOLD, DEFAULT_TOPIC_CONTEXT
     # 加载YAML配置文件
     with open('config.yml', 'r', encoding='utf-8') as file:
         config = yaml.safe_load(file)
     # 从配置中获取值
     OPENAI_API_KEY = config['OPENAI_API_KEY']
     UPDATE_CONTEXT_THRESHOLD = config['UPDATE_CONTEXT_THRESHOLD']
-    BOT_ROLE_CONFIG = config['BOT_ROLE_CONFIG']
-
 
 # 与语音识别转录相关的函数:-------------------------------------------------------------------------------------------------
 
@@ -70,38 +66,38 @@ def convert_audio_format(audio_file, target_format='mp3'):  # 将前端传来的
 
 # 与openAI交互相关的函数:--------------------------------------------------------------------------------------------------
 
-def obtain_context(topic_id):  # 创建context
-    context = [
-        {"role": "system",
-         "content": BOT_ROLE_CONFIG},
-    ]
+def obtain_message(topic_id, prompt):  # 创建context
     topic = Topic.objects.get(id=topic_id)
+    message = [
+        {"role": "system",
+         "content": topic.custom_context},
+    ]
     topic_context = topic.context
     if topic_context != '':  # 如果context不为空(即conversation的数大于20),则将context添加到message中
-        context.append({"role": "system", "content": topic_context})
+        message.append({"role": "system", "content": topic_context})
     conversations = topic.conversations.all()
-    summarized_conversation_range = ((conversations.count() - 1) // UPDATE_CONTEXT_THRESHOLD) * UPDATE_CONTEXT_THRESHOLD  # 计算context所总结的conversation的范围,如果conversations.count()=0,结果也为0
+    summarized_conversation_range = (conversations.count() // UPDATE_CONTEXT_THRESHOLD) * UPDATE_CONTEXT_THRESHOLD  # 计算context所总结的conversation的范围,如果conversations.count()=0,结果也为0
     remainder = conversations.count() - summarized_conversation_range  # 计算未被总结进context的conversation的个数
     if remainder > 0:
         # 获取最后的remainder条对话
         last_conversations = list(conversations)[-remainder:]
         for conversation in last_conversations:
-            # 检查当前对话是否是最后一条conversation，并且是没有response的对话，如果是，则跳过
-            if conversation == last_conversations[-1] and not conversation.response:
-                continue
             # 向message中添加对话
-            context.append({"role": "user", "content": conversation.prompt})
-            if conversation.response:
-                context.append({"role": "assistant", "content": conversation.response})
-    return context
+            if conversation.prompt is not None:
+                message.append({"role": "user", "content": conversation.prompt})
+            if conversation.response is not None:
+                message.append({"role": "assistant", "content": conversation.response})
+    # 将本次用户提问的prompt添加到message中
+    message.append({"role": "user", "content": prompt})
+    return message
 
 
-def asynchronously_update_context(topic_id, message, latest_conversation):  # TODO 更新context(暂未实现异步更新)
+def asynchronously_update_context(topic_id, message, new_conversation):  # TODO 更新context(暂未实现异步更新)
     topic = Topic.objects.get(id=topic_id)
     conversations = topic.conversations.all()
     if conversations.count() % UPDATE_CONTEXT_THRESHOLD == 0:
-        if latest_conversation.response is not None:
-            message.append({"role": "assistant", "content": latest_conversation.response})
+        if new_conversation.response is not None:
+            message.append({"role": "assistant", "content": new_conversation.response})
         message.append({"role": "user",
                         "content": "Please summarize the context and content of your previous conversation with the user. The summary text should contain the main information of the user, the main context and details of the conversation. The summarized text should be limited to 250 words"})
         updated_context = obtain_openai_response(message)
@@ -121,17 +117,8 @@ def obtain_openai_response(message):
         return "Error: Response timed out, please check your network connection!"
 
 
-# def user_defined_context():
-#     # 时间
-#     # 地点
-#     # 用户所扮演的角色
-#     # bot所扮演的角色
-#     # 自定义事件
-#     # 自定义先前对话
-#
-
-
 # 数据库增删改查:---------------------------------------------------------------------------------------------------------
+
 
 def asynchronously_save_audio_to_db(conversation_id, audio_file):  # 由于存储大数据量的MP3文件耗时较多,因此选择异步地将音频文件保存到数据库中
     # 利用conversation_id获取conversation对象

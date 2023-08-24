@@ -8,7 +8,7 @@ class TopicSerializer(serializers.ModelSerializer):
     topic_id = serializers.IntegerField(source='id')  # 使用source属性指向模型的id字段
     class Meta:
         model = Topic
-        fields = ['topic_id', 'user', 'theme', 'context']
+        fields = ['topic_id', 'user', 'theme', 'context','custom_context']
 
 
 
