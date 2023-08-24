@@ -10,5 +10,5 @@ urlpatterns = [
     path('customtopic/', create_user_defined_topic),
     path('change/theme/', receive_text),
 
-    path('get_audio/', send_audio)
+    # path('get_audio/', send_audio)
 ]

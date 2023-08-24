@@ -11,7 +11,6 @@ class TopicSerializer(serializers.ModelSerializer):
         fields = ['topic_id', 'user', 'theme', 'context','custom_context']
 
 
-
 class ConversationSerializer(serializers.ModelSerializer):
     # topic = serializers.PrimaryKeyRelatedField(queryset=Topic.objects.all()) # 只显示topic的主键
     topic = TopicSerializer(read_only=True)
