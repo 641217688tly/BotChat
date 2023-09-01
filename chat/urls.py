@@ -9,6 +9,7 @@ urlpatterns = [
     path('newtopic/', create_topic),
     path('customtopic/', create_user_defined_topic),
     path('change/theme/', receive_text),
+    path('rerecord_voice/', rerecord_voice),
 
-    # path('get_audio/', send_audio)
+    # path('get_audio/', send_audio) # 拆分得到的视图函数
 ]

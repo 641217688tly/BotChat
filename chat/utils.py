@@ -128,7 +128,6 @@ def asynchronously_save_audio_to_db(conversation_id, audio_file):  # 由于存�
     # 保存conversation对象
     conversation.save()
 
-
 # @app.task #TODO 利用Celery实现异步存储音频文件,由于Docker尚未成功配置,因此暂时不使用Celery
 # def asynchronously_save_audio_to_db(conversation_id, mp3_audio_file): # 由于存储大数据量的MP3文件耗时较多,因此选择异步地将音频文件保存到数据库中
 #     # 利用conversation_id获取conversation对象
@@ -265,4 +264,5 @@ def save_audio_from_xunfei(response_text, conversation):
 
 
 def convert_audio_to_base64(audio):
+    #TODO 转成Blob类型
     return base64.b64encode(audio).decode('utf-8')
