@@ -1,6 +1,7 @@
 import functools
 import shutil
 import tempfile
+from io import BytesIO
 from functools import partial
 import openai
 import yaml
@@ -34,20 +35,15 @@ def load_config_constant():  # 加载YAML配置文件
 
 # 与语音识别转录相关的函数:-------------------------------------------------------------------------------------------------
 
-
-def audio_to_text(mp3_audio_file):
-    """
-    Transcribes an audio file and returns the transcribed text.
-    """
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_audio_path = os.path.join(temp_dir, 'temp_audio.mp3')
-        with open(temp_audio_path, 'wb') as temp_file:
-            shutil.copyfileobj(mp3_audio_file, temp_file)
-        transcribed_text = transcribe_audio(temp_audio_path)
-    return transcribed_text
+def convert_audio_format(prompt_audio_binary_data, target_format='mp3'):  # 接收二进制格式的音频文件,并将其转换为mp3格式
+    audio_segment = AudioSegment.from_file(BytesIO(prompt_audio_binary_data))
+    converted_audio_file = BytesIO()
+    audio_segment.export(converted_audio_file, format=target_format)
+    converted_audio_file.seek(0)
+    return converted_audio_file
 
 
-def transcribe_audio(audio_file_path):
+def transcribe_audio(audio_file_path): # 调用faster-whisper模型进行语音识别
     global WHISPER_MODEL
     if WHISPER_MODEL is None:
         load_whisper_model()
@@ -57,12 +53,17 @@ def transcribe_audio(audio_file_path):
     return transcription
 
 
-def convert_audio_format(audio_file, target_format='mp3'):  # 将前端传来的音频文件转换为mp3格式(LegendBug没用上)
-    # 此处可添加转换音频格式的代码
-    audio_segment = AudioSegment.from_file(audio_file)
-    converted_audio_file = audio_segment.export(format=target_format)
-    print("converted_audio_file method is called")
-    return converted_audio_file
+def audio_to_text(prompt_audio_binary_data): # 临时存储音频文件并调用transcribe_audio函数进行语音识别
+    """
+    Transcribes an audio file and returns the transcribed text.
+    """
+    mp3_audio_file = convert_audio_format(prompt_audio_binary_data)
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_audio_path = os.path.join(temp_dir, 'temp_audio.mp3')
+        with open(temp_audio_path, 'wb') as temp_file:
+            shutil.copyfileobj(mp3_audio_file, temp_file)
+        transcribed_text = transcribe_audio(temp_audio_path)
+    return transcribed_text
 
 
 # 与openAI交互相关的函数:--------------------------------------------------------------------------------------------------
@@ -252,9 +253,8 @@ def save_audio_from_xunfei(response_text, conversation):
     ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
 
 
-def convert_audio_to_base64(audio):
-    #TODO 转成Blob类型
-    return base64.b64encode(audio).decode('utf-8')
+def convert_audio_to_base64(binary_audio_data):
+    return base64.b64encode(binary_audio_data).decode('utf-8') # 将二进制音频数据转换为base64编码的字符串
 
 
 # 与语音评价相关的函数:--------------------------------------------------------------------------------------------------
@@ -370,7 +370,8 @@ def on_open_wrapper_ISE(ws, ws_param):
         frameSize = 1280  # 每一帧的音频大小
         intervel = 0.04  # 发送音频间隔(单位:s)
         status = STATUS_FIRST_FRAME  # 音频的状态信息，标识音频是第一帧，还是中间帧、最后一帧
-        audio_data = ws_param.AudioFile.decode('utf-8')  # 二进制音频数据
+        # audio_data = ws_param.AudioFile.decode('utf-8')  # 二进制音频数据
+        audio_data = ws_param.AudioFile
         current_pos = 0
 
         while True:

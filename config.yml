@@ -1,5 +1,6 @@
 JWT_SECRET_KEY: "baiheTL0327+"
 
+# 麻了,我的openai账户上API的5美刀使用过期了,现在这个API_KEY得不到响应的,得向openai账户里缴费才行
 OPENAI_API_KEY: "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"
 
 UPDATE_CONTEXT_THRESHOLD : 20

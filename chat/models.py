@@ -23,7 +23,7 @@ class Conversation(models.Model):
     response = models.TextField(blank=True)  # bot的回复
     prompt_audio = models.BinaryField(blank=True, null=True)  # 用户的语音提问
     response_audio = models.BinaryField(blank=True, null=True)  # bot的回复语音
-    prompt_assessment = models.TextField(blank=True)  # 对用户语音的评价
+    prompt_audio_assessment = models.TextField(blank=True)  # 对用户语音的评价
     class Meta:
         db_table = 'conversations'
         ordering = ['created_time']  # 按创建时间排序
