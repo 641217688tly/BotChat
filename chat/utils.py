@@ -247,8 +247,8 @@ def save_audio_from_xunfei(response_text, conversation):
     websocket.enableTrace(False)
     ws_url = ws_param.create_url()
     # 使用 functools.partial 来传递text到 on_message 函数
-    on_message_with_arg = partial(on_message_ISE, conversation=conversation)
-    ws = websocket.WebSocketApp(ws_url, on_message=on_message_with_arg, on_error=on_error, on_close=on_close_ISE)
+    on_message_with_arg = partial(on_message_TTS, conversation=conversation)
+    ws = websocket.WebSocketApp(ws_url, on_message=on_message_with_arg, on_error=on_error, on_close=on_close_TTS)
     ws.on_open = lambda ws: on_open_wrapper_TTS(ws, ws_param)
     ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
 
@@ -422,7 +422,7 @@ def assess_audio_from_xunfei(prompt, prompt_audio):
                          Text=TEXT)
     websocket.enableTrace(False)
     wsUrl = wsParam.create_url()
-    ws = websocket.WebSocketApp(wsUrl, on_message=on_message_ISE, on_error=on_error, on_close=on_close_ISE())
+    ws = websocket.WebSocketApp(wsUrl, on_message=on_message_ISE, on_error=on_error, on_close=on_close_ISE)
     on_open_with_param = functools.partial(on_open_wrapper_ISE, ws_param=wsParam)
     ws.on_open = on_open_with_param
     ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
