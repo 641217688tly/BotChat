@@ -234,6 +234,11 @@ def receive_audio(request):  # localhost/botchat/chat/sendvoice/
     audio_file = ContentFile(prompt_audio.read())  # 处理语音，转换为文本
     converted_audio_file = convert_audio_format(audio_file)  # 如果需要，转换音频格式为合适的格式
     prompt = audio_to_text(converted_audio_file)  # 将音频转换为文本
+
+    # TODO 将音频发送至科大讯飞评分
+    prompt_assessment = assess_audio_from_xunfei(prompt, prompt_audio)  # 获取语音评价(用户文本，用户语音)，返回一个xml文本
+    print(prompt_assessment)
+
     message = obtain_message(topic_id, prompt)  # 获取历史聊天语境
     response = obtain_openai_response(message)  # 向openai发送请求并得到响应
     new_conversation = Conversation.objects.create(
@@ -241,13 +246,17 @@ def receive_audio(request):  # localhost/botchat/chat/sendvoice/
         prompt=prompt,
         response=response,
         prompt_audio=b'',
-        response_audio=b''
+        response_audio=b'',
+        prompt_assessment=""  # TODO 将xml文本丢给AI，获取最终评价
     )
     new_conversation.prompt_audio = prompt_audio
     new_conversation.save()
+
     save_audio_from_xunfei(response, new_conversation)  # 生成并保存音频
     response_audio = convert_audio_to_base64(new_conversation.response_audio)  # 读取数据库中的音频并转成base64格式
-    asynchronously_update_context(topic_id, message, new_conversation)  # 如果该topic下的conversation达到20的倍数,则尝试异步地更新context(目前异步更新context的功能还未实现)
+
+    asynchronously_update_context(topic_id, message,
+                                  new_conversation)  # 如果该topic下的conversation达到20的倍数,则尝试异步地更新context(目前异步更新context的功能还未实现)
     return Response({  # 返回响应
         'response_word': response,
         'response_voice': response_audio,
