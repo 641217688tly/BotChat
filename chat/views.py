@@ -11,7 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([]) # @permission_classes([IsAuthenticated])
 def create_topic(request):  # localhost/botchat/chat/newtopic/ 为用户创建新的topic
     user_id = request.data.get('user_id')
     # 确保数据完整性
@@ -32,7 +32,7 @@ def create_topic(request):  # localhost/botchat/chat/newtopic/ 为用户创建�
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([]) # @permission_classes([IsAuthenticated])
 def create_user_defined_topic(request):  # localhost/botchat/chat/customtopic/ 为用户创建自定义聊天语境的topic
     # 接收前端的数据
     data = request.data
@@ -114,7 +114,7 @@ def create_user_defined_topic(request):  # localhost/botchat/chat/customtopic/ �
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([]) # @permission_classes([IsAuthenticated])
 def change_theme(request):  # localhost/botchat/chat/change/theme/ 为用户切换当天聊天的topic
     topic_id = request.data.get('topic_id')
     new_theme = request.data.get('theme')
@@ -132,7 +132,7 @@ def change_theme(request):  # localhost/botchat/chat/change/theme/ 为用户切�
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([]) # @permission_classes([IsAuthenticated])
 def get_topics(request):  # localhost/botchat/chat/gettopics/?user_id 为用户获取所有的历史聊天topic
     user_id = request.GET.get('user_id')
     if user_id is None:
@@ -145,7 +145,7 @@ def get_topics(request):  # localhost/botchat/chat/gettopics/?user_id 为用户�
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([]) # @permission_classes([IsAuthenticated])
 def get_topic_details(request):  # localhost/botchat/chat/getdetails/?topic_id 为用户获取某个topic下的所有历史对话
     # 获取GET参数中的topic_id
     topic_id = request.GET.get('topic_id')
@@ -153,24 +153,33 @@ def get_topic_details(request):  # localhost/botchat/chat/getdetails/?topic_id �
         return Response({'error': 'Missing topic_id parameter'}, status=400)
     # 查询对应的Conversations
     conversations = Conversation.objects.filter(topic__id=topic_id)
-    # 序列化数据
-    serializer = ConversationSerializer(conversations, many=True)
-    serialized_data = serializer.data
-    # 构造新的JSON结构以符合前端的需求
+    # # 序列化数据
+    # serializer = ConversationSerializer(conversations, many=True)
+    # serialized_data = serializer.data
+    # # 构造新的JSON结构以符合前端的需求
+    # details = []
+    # for item in serialized_data:
+    #     detail = {
+    #         'detail_id': item['conversation_id'],
+    #         'prompt': item['prompt_word'],
+    #         'response_word': item['response_word'],
+    #         'response_voice': item['response_voice']
+    #     }
+    #     details.append(detail)
     details = []
-    for item in serialized_data:
+    for conversation in conversations:
         detail = {
-            'detail_id': item['conversation_id'],
-            'prompt': item['prompt_word'],
-            'response_word': item['response_word'],
-            'response_voice': item['response_voice']
+            'detail_id': conversation.id,
+            'prompt': conversation.prompt,
+            'response_word': conversation.response,
+            'response_voice': convert_audio_to_base64(conversation.response_audio)
         }
         details.append(detail)
     return Response({'details': details})
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([]) # @permission_classes([IsAuthenticated])
 def receive_text(request):  # localhost/botchat/chat/sendword/ 接收用户发送的文字prompt
     # 从请求中获取数据:
     user_id = request.data.get('user_id')
@@ -209,16 +218,15 @@ def receive_text(request):  # localhost/botchat/chat/sendword/ 接收用户发�
     new_conversation.response = response  # 将response存入数据库
 
     # 使用响应文本合成音频并存入数据库
-    save_audio_from_xunfei(response,
-                           new_conversation)  # 生成并保存音频进数据库(包含了new_conversation.response_audio = response_audio)
+    save_audio_from_xunfei(response,new_conversation)  # 生成并保存音频进数据库(包含了new_conversation.response_audio = response_audio)
     new_conversation.save()
 
     # 读取数据库中的音频并转成base64格式的字符串
-    response_audio_base64_data = convert_audio_to_base64(new_conversation.response_audio) #TODO 在序列化器类中似乎已经完成了二进制音频数据转base64的操作,考虑是否需要移除其中的一步(更倾向于在序列化器中直接输出二进制音频数据)
+    response_audio_base64_data = convert_audio_to_base64(new_conversation.response_audio)
 
     # 如果该topic下的conversation达到20的倍数,则尝试异步地更新context(TODO 目前异步更新context的功能还未实现)
-    # asynchronously_update_context(topic_id, message, new_conversation)
-    asynchronously_update_context.delay(topic_id, message, new_conversation)
+    asynchronously_update_context(topic_id, message, new_conversation)
+    # asynchronously_update_context.delay(topic_id, message, new_conversation.id)
 
     return Response({  # 返回响应
         'response_word': response,
@@ -228,7 +236,7 @@ def receive_text(request):  # localhost/botchat/chat/sendword/ 接收用户发�
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([]) # @permission_classes([IsAuthenticated])
 def receive_audio(request):  # localhost/botchat/chat/sendvoice/ 接收用户发送的语音prompt
     # 从请求中获取数据:
     user_id = request.data.get('user_id')
@@ -269,8 +277,8 @@ def receive_audio(request):  # localhost/botchat/chat/sendvoice/ 接收用户发
     new_conversation.save()
 
     # 利用科大讯飞API+openaiAPI对用户输入的音频进行评分(耗时较长 TODO 应该异步地实现)
-    # asynchronously_obtain_audio_assessment_embellished_by_openai(prompt, prompt_audio, new_conversation)
-    asynchronously_obtain_audio_assessment_embellished_by_openai.delay(prompt, prompt_audio, new_conversation)
+    asynchronously_obtain_audio_assessment_embellished_by_openai(prompt, prompt_audio, new_conversation)
+    # asynchronously_obtain_audio_assessment_embellished_by_openai.delay(prompt, prompt_audio, new_conversation.id)
 
     print("receive_audio view function is successfully skipping the asynchronous function!")
 
@@ -284,11 +292,11 @@ def receive_audio(request):  # localhost/botchat/chat/sendvoice/ 接收用户发
     new_conversation.save()
 
     # 读取数据库中的音频并转成base64格式的字符串
-    response_audio_base64_data = convert_audio_to_base64(new_conversation.response_audio)  #TODO 在序列化器类中似乎已经完成了二进制音频数据转base64的操作,考虑是否需要移除其中的一步(更倾向于在序列化器中直接输出二进制音频数据)
+    response_audio_base64_data = convert_audio_to_base64(new_conversation.response_audio)
 
     # 如果该topic下的conversation达到20的倍数,则尝试异步地更新context(TODO 目前异步更新context的功能还未实现)
-    # asynchronously_update_context(topic_id, message, new_conversation)
-    asynchronously_update_context.delay(topic_id, message, new_conversation)
+    asynchronously_update_context(topic_id, message, new_conversation)
+    # asynchronously_update_context.delay(topic_id, message, new_conversation.id)
 
     print("receive_audio view function is successfully skipping the asynchronous function!")
 
@@ -300,7 +308,7 @@ def receive_audio(request):  # localhost/botchat/chat/sendvoice/ 接收用户发
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([]) # @permission_classes([IsAuthenticated])
 def rerecord_voice(request):  # localhost/botchat/chat/rerecord_voice/ 为用户重新录制某个topic下的某一prompt的语音
     # 获取请求中的conversation_id和新的prompt_voice
     conversation_id = request.data.get('conversation_id')

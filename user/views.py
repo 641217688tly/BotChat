@@ -76,7 +76,7 @@ def register(request): # localhost/botchat/user/register
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([]) # @permission_classes([IsAuthenticated])
 def change_user_info(request): # localhost/botchat/user/change/info
     user_id = request.data.get('user_id')
     username = request.data.get('username')

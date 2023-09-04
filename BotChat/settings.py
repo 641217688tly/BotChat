@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    'corsheaders',
     'rest_framework',  # 添加rest_framework
     'user',
     'chat',
@@ -43,6 +44,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    'corsheaders.middleware.CorsMiddleware',# 添加corsheaders中间件以处理跨域请求
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -187,12 +189,15 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',  # 默认权限，意味着只有经过身份验证的用户才可以访问API视图
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.BasicAuthentication',  # 基本的HTTP认证，通常在开发环境中使用
         'rest_framework.authentication.SessionAuthentication',  # Django的session认证，如果您使用Django的登录系统也可以保留
         'rest_framework.authentication.TokenAuthentication',  # Token身份验证
-        'rest_framework.authentication.BasicAuthentication',  # 基本的HTTP认证，通常在开发环境中使用
     ],
 }
 
 DEFAULT_TOPIC_CONTEXT = "chatGPT Role: You are an oral English teacher fluent in both Chinese and English. The following system content is the former conversation between user and you. Please answer the user's questions in a manner that mimics that of an oral English teacher. Unless specifically requested by the user, the length of each answer should be limited to 125 words."
 
 AUDIO_ASSESSMENT_REQUIREMENT_PROMPT = "上述xml格式的文本是对用户一段英语发音的评分.请根据上述xml文本提供的评分细节,总结用户的得分情况和最终成绩并使用流畅的简体中文输出结果.绝大部分的评分标准不需要给出具体分数,只需要根据分数高低大概地笼统地评价.请注意:所有评分标准都是以0分作为最低分,以5分作为最高分,值为负数的参数请忽略不计.你的回答需要严肃、客观,对于用户得分较高的部分可以加以赞赏,对于用户得分较低的部分可以指出可能存在的问题.以上xml文本中的评分标准不需要向用户解释"
+
+# 配置CORS:
+CORS_ALLOW_ALL_ORIGINS = True

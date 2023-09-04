@@ -21,7 +21,7 @@ class ConversationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Conversation
-        fields = ['conversation_id', 'topic', 'prompt_word', 'response_word', 'prompt_voice', 'response_voice', 'audio_assessment']  # 更改字段名
+        fields = ['conversation_id', 'topic', 'prompt_word', 'response_word', 'audio_assessment']  # 'prompt_voice', 'response_voice'
     def get_prompt_voice(self, obj):  # 更改后的获取方法
         if obj.prompt_audio:
             return base64.b64encode(obj.prompt_audio).decode('utf-8')

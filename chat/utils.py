@@ -22,7 +22,7 @@ def load_whisper_model():  # 实现模型的预加载
         "load_whisper_model method is called, model is loading...This model is 2.9G in size and will take 3-5 minutes to download for the first time access.")
     global WHISPER_MODEL
     model_size = "large-v2"
-    WHISPER_MODEL = WhisperModel(model_size, device="cuda", compute_type="float16")
+    WHISPER_MODEL = WhisperModel(model_size, device="cuda", compute_type="float16")  # float16
     print("Model successfully loaded!")
 
 
@@ -82,7 +82,7 @@ def obtain_message(topic_id, prompt):  # 创建context
         message.append({"role": "system", "content": topic_context})
     conversations = topic.conversations.all()
     summarized_conversation_range = (
-                                                conversations.count() // UPDATE_CONTEXT_THRESHOLD) * UPDATE_CONTEXT_THRESHOLD  # 计算context所总结的conversation的范围,如果conversations.count()=0,结果也为0
+                                            conversations.count() // UPDATE_CONTEXT_THRESHOLD) * UPDATE_CONTEXT_THRESHOLD  # 计算context所总结的conversation的范围,如果conversations.count()=0,结果也为0
     remainder = conversations.count() - summarized_conversation_range  # 计算未被总结进context的conversation的个数
     if remainder > 0:
         # 获取最后的remainder条对话
@@ -97,11 +97,14 @@ def obtain_message(topic_id, prompt):  # 创建context
     message.append({"role": "user", "content": prompt})
     return message
 
+
 from celery import shared_task
 
-@shared_task
-def asynchronously_update_context(topic_id, message, new_conversation):  # TODO 更新context(暂未实现异步更新)
+
+# @shared_task
+def asynchronously_update_context(topic_id, message, conversation_id):  # TODO 更新context(暂未实现异步更新)
     print("asynchronously_update_context method is called")
+    new_conversation = Conversation.objects.get(id=conversation_id)
     topic = Topic.objects.get(id=topic_id)
     conversations = topic.conversations.all()
     if conversations.count() % UPDATE_CONTEXT_THRESHOLD == 0:
@@ -128,13 +131,14 @@ def obtain_openai_response(message):
 
 
 # 对于Conversation模型的操作有可能需要使用乐观锁
-@shared_task
-def asynchronously_obtain_audio_assessment_embellished_by_openai(prompt, prompt_audio, new_conversation):  # 获取音频评估
+# @shared_task
+def asynchronously_obtain_audio_assessment_embellished_by_openai(prompt, prompt_audio, conversation_id):  # 获取音频评估
     print("asynchronously_obtain_audio_assessment_embellished_by_openai method is called")
+    new_conversation = Conversation.objects.get(id=conversation_id)
     audio_assessment_prompt = assess_audio_from_xunfei(prompt, prompt_audio)
     message = [
-        {"role": "user","content": audio_assessment_prompt},
-        {"role": "user","content": settings.AUDIO_ASSESSMENT_REQUIREMENT_PROMPT},
+        {"role": "user", "content": audio_assessment_prompt},
+        {"role": "user", "content": settings.AUDIO_ASSESSMENT_REQUIREMENT_PROMPT},
     ]
     openai.api_key = OPENAI_API_KEY
     try:
@@ -142,7 +146,7 @@ def asynchronously_obtain_audio_assessment_embellished_by_openai(prompt, prompt_
             model="gpt-3.5-turbo",
             messages=message,
         )
-        audio_assessment_text =  response.choices[0].message['content'].strip()
+        audio_assessment_text = response.choices[0].message['content'].strip()
         new_conversation.audio_assessment = audio_assessment_text
         new_conversation.save()
         print("asynchronously_obtain_audio_assessment_embellished_by_openai method is finished")
@@ -150,6 +154,7 @@ def asynchronously_obtain_audio_assessment_embellished_by_openai(prompt, prompt_
     except (Exception):
         print("asynchronously_obtain_audio_assessment_embellished_by_openai method is finished")
         return "Error: Response timed out, please check your network connection!"
+
 
 # 与文本转语音相关的函数:--------------------------------------------------------------------------------------------------
 
