@@ -94,7 +94,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'botchat',
         'USER': 'root',
-        'PASSWORD': '20030207TLY',
+        'PASSWORD': '181818188',
         'HOST': 'localhost',
         'PORT': 3306,
     }
@@ -197,7 +197,15 @@ REST_FRAMEWORK = {
 
 DEFAULT_TOPIC_CONTEXT = "chatGPT Role: You are an oral English teacher fluent in both Chinese and English. The following system content is the former conversation between user and you. Please answer the user's questions in a manner that mimics that of an oral English teacher. Unless specifically requested by the user, the length of each answer should be limited to 125 words."
 
-AUDIO_ASSESSMENT_REQUIREMENT_PROMPT = "上述xml格式的文本是对用户一段英语发音的评分.请根据上述xml文本提供的评分细节,总结用户的得分情况和最终成绩并使用流畅的简体中文输出结果.绝大部分的评分标准不需要给出具体分数,只需要根据分数高低大概地笼统地评价.请注意:所有评分标准都是以0分作为最低分,以5分作为最高分,值为负数的参数请忽略不计.你的回答需要严肃、客观,对于用户得分较高的部分可以加以赞赏,对于用户得分较低的部分可以指出可能存在的问题.以上xml文本中的评分标准不需要向用户解释"
+AUDIO_ASSESSMENT_REQUIREMENT_PROMPT = ("1. 上述xml格式的文本是对用户一段英语发音的评分，其中包含了段落、句子、词语三大类的评价参数"
+                                       "2. 请根据上述xml文本提供的评分细节,总结用户的得分情况和最终成绩并使用流畅的简体中文输出结果"
+                                       "3. 评价的第一部分是对用户所阅读段落的整体评价"
+                                       "4. 评价的第二部分是对一些句子、词语较为突出的部分进行评价（对于用户得分较高的部分可以加以赞赏,对于用户得分较低的部分可以指出可能存在的问题）"
+                                       "5. 为了精简评价，不是所有句子和词语都需要进行评价。对于需要评价的，只需要根据分数高低大概地笼统地评价，不需要告知读者分数。"
+                                       "6. xml中所有评分参数都是以0分作为最低分,以5分作为最高分。值为负数的参数无意义，请忽略。"
+                                       "7. 你的回答需要严肃、客观。"
+                                       "8. 以上评分标准不需要向用户解释"
+                                       "9. 以第二人称的形式回复")
 
 # 配置CORS:
 CORS_ALLOW_ALL_ORIGINS = True

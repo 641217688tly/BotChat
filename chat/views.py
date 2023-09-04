@@ -470,7 +470,7 @@ def receive_audio(request):  # localhost/botchat/chat/sendvoice/ 接收用户发
     new_conversation.save()
 
     # 利用科大讯飞API+openaiAPI对用户输入的音频进行评分(耗时较长 TODO 应该异步地实现)
-    asynchronously_obtain_audio_assessment_embellished_by_openai(prompt, prompt_audio, new_conversation.id)
+    # asynchronously_obtain_audio_assessment_embellished_by_openai(prompt, prompt_audio, new_conversation.id)
     # asynchronously_obtain_audio_assessment_embellished_by_openai.delay(prompt, prompt_audio, new_conversation.id)
 
     print("receive_audio view function is successfully skipping the asynchronous function!")
