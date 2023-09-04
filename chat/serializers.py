@@ -8,8 +8,7 @@ class TopicSerializer(serializers.ModelSerializer):
     topic_id = serializers.IntegerField(source='id')  # 使用source属性指向模型的id字段
     class Meta:
         model = Topic
-        fields = ['topic_id', 'user', 'theme', 'context','custom_context']
-
+        fields = ['topic_id', 'user', 'theme', 'context', 'custom_context']
 
 class ConversationSerializer(serializers.ModelSerializer):
     # topic = serializers.PrimaryKeyRelatedField(queryset=Topic.objects.all()) # 只显示topic的主键
@@ -22,7 +21,7 @@ class ConversationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Conversation
-        fields = ['conversation_id', 'topic', 'prompt_word', 'response_word', 'prompt_voice', 'response_voice']  # 更改字段名
+        fields = ['conversation_id', 'topic', 'prompt_word', 'response_word', 'prompt_voice', 'response_voice', 'audio_assessment']  # 更改字段名
     def get_prompt_voice(self, obj):  # 更改后的获取方法
         if obj.prompt_audio:
             return base64.b64encode(obj.prompt_audio).decode('utf-8')

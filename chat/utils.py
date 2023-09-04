@@ -1,6 +1,7 @@
 import functools
 import shutil
 import tempfile
+import os
 from io import BytesIO
 from functools import partial
 import openai
@@ -14,6 +15,7 @@ from chat.models import *
 WHISPER_MODEL = None
 OPENAI_API_KEY = None
 UPDATE_CONTEXT_THRESHOLD = None  # 规定了更新context的阈值,即当theme的聊天记录达到20条时,就更新context
+
 
 def load_whisper_model():  # 实现模型的预加载
     print(
@@ -33,6 +35,7 @@ def load_config_constant():  # 加载YAML配置文件
     OPENAI_API_KEY = config['OPENAI_API_KEY']
     UPDATE_CONTEXT_THRESHOLD = config['UPDATE_CONTEXT_THRESHOLD']
 
+
 # 与语音识别转录相关的函数:-------------------------------------------------------------------------------------------------
 
 def convert_audio_format(prompt_audio_binary_data, target_format='mp3'):  # 接收二进制格式的音频文件,并将其转换为mp3格式
@@ -43,7 +46,7 @@ def convert_audio_format(prompt_audio_binary_data, target_format='mp3'):  # 接�
     return converted_audio_file
 
 
-def transcribe_audio(audio_file_path): # 调用faster-whisper模型进行语音识别
+def transcribe_audio(audio_file_path):  # 调用faster-whisper模型进行语音识别
     global WHISPER_MODEL
     if WHISPER_MODEL is None:
         load_whisper_model()
@@ -53,7 +56,7 @@ def transcribe_audio(audio_file_path): # 调用faster-whisper模型进行语音�
     return transcription
 
 
-def audio_to_text(prompt_audio_binary_data): # 临时存储音频文件并调用transcribe_audio函数进行语音识别
+def audio_to_text(prompt_audio_binary_data):  # 临时存储音频文件并调用transcribe_audio函数进行语音识别
     """
     Transcribes an audio file and returns the transcribed text.
     """
@@ -78,7 +81,8 @@ def obtain_message(topic_id, prompt):  # 创建context
     if topic_context != '':  # 如果context不为空(即conversation的数大于20),则将context添加到message中
         message.append({"role": "system", "content": topic_context})
     conversations = topic.conversations.all()
-    summarized_conversation_range = (conversations.count() // UPDATE_CONTEXT_THRESHOLD) * UPDATE_CONTEXT_THRESHOLD  # 计算context所总结的conversation的范围,如果conversations.count()=0,结果也为0
+    summarized_conversation_range = (
+                                                conversations.count() // UPDATE_CONTEXT_THRESHOLD) * UPDATE_CONTEXT_THRESHOLD  # 计算context所总结的conversation的范围,如果conversations.count()=0,结果也为0
     remainder = conversations.count() - summarized_conversation_range  # 计算未被总结进context的conversation的个数
     if remainder > 0:
         # 获取最后的remainder条对话
@@ -93,8 +97,11 @@ def obtain_message(topic_id, prompt):  # 创建context
     message.append({"role": "user", "content": prompt})
     return message
 
+from celery import shared_task
 
+@shared_task
 def asynchronously_update_context(topic_id, message, new_conversation):  # TODO 更新context(暂未实现异步更新)
+    print("asynchronously_update_context method is called")
     topic = Topic.objects.get(id=topic_id)
     conversations = topic.conversations.all()
     if conversations.count() % UPDATE_CONTEXT_THRESHOLD == 0:
@@ -105,6 +112,7 @@ def asynchronously_update_context(topic_id, message, new_conversation):  # TODO 
         updated_context = obtain_openai_response(message)
         topic.context = updated_context
         topic.save()
+    print("asynchronously_update_context method is finished")
 
 
 def obtain_openai_response(message):
@@ -119,31 +127,31 @@ def obtain_openai_response(message):
         return "Error: Response timed out, please check your network connection!"
 
 
-# 数据库增删改查:---------------------------------------------------------------------------------------------------------
-
-
-def asynchronously_save_audio_to_db(conversation_id, audio_file):  # 由于存储大数据量的MP3文件耗时较多,因此选择异步地将音频文件保存到数据库中
-    # 利用conversation_id获取conversation对象
-    conversation = Conversation.objects.get(id=conversation_id)
-    # 将mp3_audio_file存入conversation对象的prompt_audio字段中
-    conversation.prompt_audio = audio_file
-    # 保存conversation对象
-    conversation.save()
-
-
-# @app.task #TODO 利用Celery实现异步存储音频文件,由于Docker尚未成功配置,因此暂时不使用Celery
-# def asynchronously_save_audio_to_db(conversation_id, mp3_audio_file): # 由于存储大数据量的MP3文件耗时较多,因此选择异步地将音频文件保存到数据库中
-#     # 利用conversation_id获取conversation对象
-#     conversation = Conversation.objects.get(id=conversation_id)
-#     # 将mp3_audio_file存入conversation对象的prompt_audio字段中
-#     conversation.prompt_audio = mp3_audio_file
-#     # 保存conversation对象
-#     conversation.save()
-
+# 对于Conversation模型的操作有可能需要使用乐观锁
+@shared_task
+def asynchronously_obtain_audio_assessment_embellished_by_openai(prompt, prompt_audio, new_conversation):  # 获取音频评估
+    print("asynchronously_obtain_audio_assessment_embellished_by_openai method is called")
+    audio_assessment_prompt = assess_audio_from_xunfei(prompt, prompt_audio)
+    message = [
+        {"role": "user","content": audio_assessment_prompt},
+        {"role": "user","content": settings.AUDIO_ASSESSMENT_REQUIREMENT_PROMPT},
+    ]
+    openai.api_key = OPENAI_API_KEY
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=message,
+        )
+        audio_assessment_text =  response.choices[0].message['content'].strip()
+        new_conversation.audio_assessment = audio_assessment_text
+        new_conversation.save()
+        print("asynchronously_obtain_audio_assessment_embellished_by_openai method is finished")
+        return
+    except (Exception):
+        print("asynchronously_obtain_audio_assessment_embellished_by_openai method is finished")
+        return "Error: Response timed out, please check your network connection!"
 
 # 与文本转语音相关的函数:--------------------------------------------------------------------------------------------------
-import os
-
 
 # 创建TTS对应的websocket对象
 class WsParamTTS(object):
@@ -236,6 +244,7 @@ def on_open_wrapper_TTS(ws, ws_param):
         d = json.dumps(d)
         print("------>开始发送文本数据，生成音频")
         ws.send(d)
+
     thread.start_new_thread(on_open, ())
 
 
@@ -254,7 +263,7 @@ def save_audio_from_xunfei(response_text, conversation):
 
 
 def convert_audio_to_base64(binary_audio_data):
-    return base64.b64encode(binary_audio_data).decode('utf-8') # 将二进制音频数据转换为base64编码的字符串
+    return base64.b64encode(binary_audio_data).decode('utf-8')  # 将二进制音频数据转换为base64编码的字符串
 
 
 # 与语音评价相关的函数:--------------------------------------------------------------------------------------------------

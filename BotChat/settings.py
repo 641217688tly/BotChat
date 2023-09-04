@@ -158,13 +158,16 @@ LOGGING = {
     },
 }
 
+
 # 使用Docker管理项目容器时采用如下配置方法来配置celery:
 # CELERY_BROKER_URL = 'redis://redis:6379/0' # 使用本地的 Redis
 # CELERY_RESULT_BACKEND = 'redis://redis:6379/0' # 使用 Redis 存储结果
 
+
 # 不使用Docker管理项目容器时采用如下配置方法来配置celery:
 CELERY_BROKER_URL = 'redis://localhost:6379/0'  # 使用本地的 Redis
 CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'  # 使用 Redis 存储结果
+
 
 # DRF配置:
 REST_FRAMEWORK = {
@@ -191,3 +194,5 @@ REST_FRAMEWORK = {
 }
 
 DEFAULT_TOPIC_CONTEXT = "chatGPT Role: You are an oral English teacher fluent in both Chinese and English. The following system content is the former conversation between user and you. Please answer the user's questions in a manner that mimics that of an oral English teacher. Unless specifically requested by the user, the length of each answer should be limited to 125 words."
+
+AUDIO_ASSESSMENT_REQUIREMENT_PROMPT = "上述xml格式的文本是对用户一段英语发音的评分.请根据上述xml文本提供的评分细节,总结用户的得分情况和最终成绩并使用流畅的简体中文输出结果.绝大部分的评分标准不需要给出具体分数,只需要根据分数高低大概地笼统地评价.请注意:所有评分标准都是以0分作为最低分,以5分作为最高分,值为负数的参数请忽略不计.你的回答需要严肃、客观,对于用户得分较高的部分可以加以赞赏,对于用户得分较低的部分可以指出可能存在的问题.以上xml文本中的评分标准不需要向用户解释"
