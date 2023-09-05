@@ -58,7 +58,6 @@ def create_user_defined_topic(request): # localhost/botchat/chat/customtopic/ �
     return Response({"topics": serializer.data}, status.HTTP_201_CREATED)
 
 
-
 @api_view(['POST'])
 @permission_classes([])  # @permission_classes([IsAuthenticated])
 def create_preset_topic(request): # localhost/botchat/chat/preset_topic/ 为用户创建预设过theme的topic
@@ -234,9 +233,9 @@ def handle_audio(request):  # localhost/botchat/chat/handle_audio/ 实现语音�
     )
     new_conversation.save()
 
-    # 利用科大讯飞API+openaiAPI对用户输入的音频进行评分(耗时较长 TODO 应该异步地实现)
+    # 利用科大讯飞API+openaiAPI对用户输入的音频进行评分(耗时较长,应该异步地实现)
     # asynchronously_obtain_audio_assessment_embellished_by_openai(prompt, prompt_audio, new_conversation.id)
-    # asynchronously_obtain_audio_assessment_embellished_by_openai.delay(prompt, prompt_audio, new_conversation.id)
+    asynchronously_obtain_audio_assessment_embellished_by_openai.delay(prompt, prompt_audio, new_conversation.id)
 
     print("handle_audio view function is successfully skipping the asynchronous function!")
 
@@ -290,9 +289,9 @@ def chat_with_openai(request):  # localhost/botchat/chat/obtain_openai_response/
     new_conversation.response = response  # 将response存入数据库
     new_conversation.save()
 
-    # 如果该topic下的conversation达到20的倍数,则尝试异步地更新context(TODO 目前异步更新context的功能还未实现)
-    asynchronously_update_context(topic_id, message, new_conversation.id)
-    # asynchronously_update_context.delay(topic_id, message, new_conversation.id)
+    # 如果该topic下的conversation达到20的倍数,则尝试异步地更新context
+    # asynchronously_update_context(topic_id, message, new_conversation.id)
+    asynchronously_update_context.delay(topic_id, message, new_conversation.id)
 
     print("chat_with_openai view function is successfully skipping the asynchronous function!")
 
@@ -374,9 +373,9 @@ def receive_text(request):  # localhost/botchat/chat/sendword/ 接收用户发�
     # 读取数据库中的音频并转成base64格式的字符串
     response_audio_base64_data = convert_audio_to_base64(new_conversation.response_audio)
 
-    # 如果该topic下的conversation达到20的倍数,则尝试异步地更新context(TODO 目前异步更新context的功能还未实现)
-    asynchronously_update_context(topic_id, message, new_conversation.id)
-    # asynchronously_update_context.delay(topic_id, message, new_conversation.id)
+    # 如果该topic下的conversation达到20的倍数,则尝试异步地更新context
+    # asynchronously_update_context(topic_id, message, new_conversation.id)
+    asynchronously_update_context.delay(topic_id, message, new_conversation.id)
 
     return Response({  # 返回响应
         'response_word': response,
@@ -427,7 +426,7 @@ def receive_audio(request):  # localhost/botchat/chat/sendvoice/ 接收用户发
     )
     new_conversation.save()
 
-    # 利用科大讯飞API+openaiAPI对用户输入的音频进行评分(耗时较长 TODO 应该异步地实现)
+    # 利用科大讯飞API+openaiAPI对用户输入的音频进行评分(耗时较长,应该异步地实现)
     # asynchronously_obtain_audio_assessment_embellished_by_openai(prompt, prompt_audio, new_conversation.id)
     # asynchronously_obtain_audio_assessment_embellished_by_openai.delay(prompt, prompt_audio, new_conversation.id)
 
@@ -446,7 +445,7 @@ def receive_audio(request):  # localhost/botchat/chat/sendvoice/ 接收用户发
     # 读取数据库中的音频并转成base64格式的字符串
     response_audio_base64_data = convert_audio_to_base64(new_conversation.response_audio)
 
-    # 如果该topic下的conversation达到20的倍数,则尝试异步地更新context(TODO 目前异步更新context的功能还未实现)
+    # 如果该topic下的conversation达到20的倍数,则尝试异步地更新context
     asynchronously_update_context(topic_id, message, new_conversation.id)
     # asynchronously_update_context.delay(topic_id, message, new_conversation.id)
 

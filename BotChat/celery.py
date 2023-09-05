@@ -11,5 +11,5 @@ app = Celery('BotChat')
 app.config_from_object('django.conf:settings', namespace='CELERY')
 
 # 自动发现所有注册的 Django app 中的任务
-app.autodiscover_tasks()
+app.autodiscover_tasks(['chat.utils'])
 

@@ -99,7 +99,7 @@ def obtain_message(topic_id, prompt):  # 创建context
 
 from celery import shared_task
 
-# @shared_task
+@shared_task
 def asynchronously_update_context(topic_id, message, conversation_id):  # TODO 更新context(暂未实现异步更新)
     print("asynchronously_update_context method is called")
     new_conversation = Conversation.objects.get(id=conversation_id)
@@ -129,7 +129,7 @@ def obtain_openai_response(message):
 
 
 # 对于Conversation模型的操作有可能需要使用乐观锁
-# @shared_task
+@shared_task
 def asynchronously_obtain_audio_assessment_embellished_by_openai(prompt, prompt_audio, conversation_id):  # 获取音频评估
     print("asynchronously_obtain_audio_assessment_embellished_by_openai method is called")
     new_conversation = Conversation.objects.get(id=conversation_id)
@@ -138,7 +138,7 @@ def asynchronously_obtain_audio_assessment_embellished_by_openai(prompt, prompt_
         {"role": "user", "content": audio_assessment_prompt},
         {"role": "user", "content": settings.AUDIO_ASSESSMENT_REQUIREMENT_PROMPT},
     ]
-    openai.api_key = OPENAI_API_KEY
+    openai.api_key = "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"
     try:
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
@@ -148,10 +148,10 @@ def asynchronously_obtain_audio_assessment_embellished_by_openai(prompt, prompt_
         new_conversation.audio_assessment = audio_assessment_text
         new_conversation.save()
         print("asynchronously_obtain_audio_assessment_embellished_by_openai method is finished")
-        return
-    except (Exception):
-        print("asynchronously_obtain_audio_assessment_embellished_by_openai method is finished")
-        return "Error: Response timed out, please check your network connection!"
+        return "asynchronously_obtain_audio_assessment_embellished_by_openai method is finished!"
+    except Exception as e:
+        print(f"Error occurred: {e}")
+        return f"Error: {e}"
 
 
 # 与文本转语音相关的函数:--------------------------------------------------------------------------------------------------
@@ -361,7 +361,7 @@ def on_message_ISE(ws, message):
 
 
 # 收到websocket关闭的处理
-def on_close_ISE():
+def on_close_ISE(ws):
     print("------>评分生成结束")
 
 

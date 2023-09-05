@@ -1,4 +1,31 @@
-# BotChat
+# BotChat-Backend
+## 后端服务器启动流程：
+### 无Docker镜像的启动流程：
+1. **运行mysql服务**：保证本地的mysql服务已经启动,同时保证Botchat包下的settings.py中的数据库配置信息与本地的mysql服务配置信息一致
+![img.png](static/img1.png)
+
+2. **启动Redis服务器(一定要在启动celery前完成)**：非Windows操作系统的使用者可以在本地通过命令行的方式在6379端口上运行Redis;Windows用户可以安装并使用Docker下载Redis镜像并在6379端口上运行Redis容器:
+```shell
+docker pull redis
+docker run -p 6379:6379 --name redis -d redis 
+```
+
+3. **启动celery服务器(一定要在启动Django服务器前完成)**：在BotChat后端项目的根目录下运行命令行以启动celery服务器
+```shell
+celery -A BotChat worker -l info -P solo -Q production,celery -n worker1
+```
+
+4. **启动Django服务器**：在BotChat后端项目的根目录下运行命令行以启动Django服务器
+```shell        
+python manage.py runserver 0.0.0.0:80
+``` 
+注意:首次运行Django后端服务器时,由于会远程拉取下载faster-whisper模型,因此需要等待3-5分钟;此外,请确保在启动Django服务器前已经下载了适配于自己显卡版本的CUDA和GPU版本的Pytorch(强烈推荐从官网下载而非从pip镜像源处直接下载);如果你不是N卡,可能会遇到关键词为"float16"的报错,可以尝试将chat包下的utils.py中的load_whisper_model()函数中的"float16"更改为"float32"来解决:
+![img_1.png](static/img2.png)
+
+### 使用Docker打包该项目为镜像的启动流程：
+1. **正在施工**：施工ing...
+
+
 ## 项目用途：
 该项目是一个用于帮助以中文为母语的人学习英语口语的Web项目。用户可以输入语音或文字，系统会自动转换成英语，并以英语语音的形式输出，以帮助用户提升他们的英语口语能力。
 
