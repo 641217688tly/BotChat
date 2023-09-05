@@ -22,7 +22,7 @@ def load_whisper_model():  # 实现模型的预加载
         "load_whisper_model method is called, model is loading...This model is 2.9G in size and will take 3-5 minutes to download for the first time access.")
     global WHISPER_MODEL
     model_size = "large-v2"
-    WHISPER_MODEL = WhisperModel(model_size, device="cuda", compute_type="float32")  # float16
+    WHISPER_MODEL = WhisperModel(model_size, device="cuda", compute_type="float16")  # float16
     print("Model successfully loaded!")
 
 
@@ -97,9 +97,7 @@ def obtain_message(topic_id, prompt):  # 创建context
     message.append({"role": "user", "content": prompt})
     return message
 
-
 from celery import shared_task
-
 
 # @shared_task
 def asynchronously_update_context(topic_id, message, conversation_id):  # TODO 更新context(暂未实现异步更新)

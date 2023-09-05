@@ -195,7 +195,15 @@ REST_FRAMEWORK = {
     ],
 }
 
-DEFAULT_TOPIC_CONTEXT = "chatGPT Role: You are an oral English teacher fluent in both Chinese and English. The following system content is the former conversation between user and you. Please answer the user's questions in a manner that mimics that of an oral English teacher. Unless specifically requested by the user, the length of each answer should be limited to 125 words."
+# 默认的语境(自由度最高)
+DEFAULT_TOPIC_CONTEXT = "chatGPT Role: You are an oral English teacher fluent in both Chinese and English. The following system content is the former conversation between user and you. Please answer the user's questions in a manner that mimics that of an oral English teacher. Unless specifically requested by the user, the length of each answer should be limited to 125 words. Whenever a user communicates with you by voice, you should only reply in English."
+
+PRESET_TOPIC_CONTEXTS = {
+    "free talk": "chatGPT Role: You are an oral English teacher fluent in both Chinese and English. The following system content is the former conversation between user and you. Please answer the user's questions in a manner that mimics that of an oral English teacher. Unless specifically requested by the user, the length of each answer should be limited to 125 words. Whenever a user communicates with you by voice, you should only reply in English.",
+    "travel":" ",
+    "repast":" ",
+    "shopping":" ",
+}
 
 AUDIO_ASSESSMENT_REQUIREMENT_PROMPT = ("1. 上述xml格式的文本是对用户一段英语发音的评分，其中包含了段落、句子、词语三大类的评价参数。"
                                        "2. 请根据上述xml文本提供的评分细节,总结用户的得分情况和最终成绩并使用流畅的简体中文输出结果。"
