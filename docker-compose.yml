@@ -11,35 +11,44 @@ services:  # 定义要运行的服务列表
       MYSQL_PASSWORD: "20030207TLY" # 为新用户设置密码
       MYSQL_ROOT_PASSWORD: "20030207TLY"  # 设置root用户的密码
     ports:
-      - "3307:3306"  # 将容器的3306端口映射到主机的3306端口
+      - "3306:3306"  # 将容器的3306端口映射到主机的3306端口(这需要保证本地运行的mysql服务不会占用3306端口)
+    volumes:
+      - db_data:/var/lib/mysql  # 将MySQL的数据目录挂载到主机的db_data目录
+    restart: always
 
   # Redis服务
   redis:
     image: redis:latest  # 使用最新版本的预构建Redis镜像
     ports:
       - "6379:6379"  # 将容器的6379端口映射到主机的6379端口
+    volumes:
+      - redis_data:/data  # 将Redis的数据目录挂载到主机的redis_data目录
+    restart: always
 
   # Celery服务
   celery:
     build: .  # 使用当前目录的Dockerfile来构建镜像
-    command: [ "celery", "-A", "chat", "worker", "--loglevel=info" ]  # 启动Celery worker
+    command: [ "celery", "-A", "BotChat", "worker", "-l", "info", "-Q", "production", "-n", "worker1" ] # 启动Celery worker
     volumes: # 挂载卷。将当前目录映射到容器的/code目录
       - .:/code
     depends_on: # 定义服务依赖，确保redis在celery服务之前启动
       - redis
-
+    restart: always
 
   # Django Web服务
   web:
     build: .  # 使用当前目录的Dockerfile来构建镜像
-    command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]  # 启动容器后要运行的命令
+    command: ["python", "manage.py", "runserver", "0.0.0.0:80"]  # 启动容器后要运行的命令
     volumes:  # 挂载卷。将当前目录映射到容器的/code目录
       - .:/code
-    ports:  # 映射端口。将容器的8000端口映射到主机的8000端口
-      - "8000:8000"
+    ports:  # 映射端口。将容器的80端口映射到主机的80端口
+      - "80:80"
     depends_on:  # 定义服务依赖，确保db和redis在web服务之前启动
       - db
       - redis
+    restart: always
 
-
-
+# Docker会在您的宿主机上为这两个volume预留存储空间，使得即使您的容器被删除，下列数据也不会丢失
+volumes:
+  db_data:
+  redis_data:

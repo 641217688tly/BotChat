@@ -16,18 +16,17 @@ WHISPER_MODEL = None
 OPENAI_API_KEY = None
 UPDATE_CONTEXT_THRESHOLD = None  # 规定了更新context的阈值,即当theme的聊天记录达到20条时,就更新context
 
-
 def load_whisper_model():  # 实现模型的预加载
     print(
         "load_whisper_model method is called, model is loading...This model is 2.9G in size and will take 3-5 minutes to download for the first time access.")
     global WHISPER_MODEL
     model_size = "large-v2"
-    WHISPER_MODEL = WhisperModel(model_size, device="cuda", compute_type="float32")  # float16
+    WHISPER_MODEL = WhisperModel(model_size, device="cuda", compute_type="float16")  # float16
     print("Model successfully loaded!")
 
 
 def load_config_constant():  # 加载YAML配置文件
-    global OPENAI_API_KEY, UPDATE_CONTEXT_THRESHOLD, DEFAULT_TOPIC_CONTEXT
+    global OPENAI_API_KEY, UPDATE_CONTEXT_THRESHOLD
     # 加载YAML配置文件
     with open('config.yml', 'r', encoding='utf-8') as file:
         config = yaml.safe_load(file)
@@ -74,15 +73,14 @@ def audio_to_text(prompt_audio_binary_data):  # 临时存储音频文件并调�
 def obtain_message(topic_id, prompt):  # 创建context
     topic = Topic.objects.get(id=topic_id)
     message = [
-        {"role": "system",
-         "content": topic.custom_context},
+        {"role": "system", "content": settings.GENERAL_TOPIC_REQUIREMENT_CUSTOM_CONTEXT},
+        {"role": "system", "content": topic.custom_context},
     ]
     topic_context = topic.context
     if topic_context != '':  # 如果context不为空(即conversation的数大于20),则将context添加到message中
         message.append({"role": "system", "content": topic_context})
     conversations = topic.conversations.all()
-    summarized_conversation_range = (
-                                            conversations.count() // UPDATE_CONTEXT_THRESHOLD) * UPDATE_CONTEXT_THRESHOLD  # 计算context所总结的conversation的范围,如果conversations.count()=0,结果也为0
+    summarized_conversation_range = (conversations.count() // UPDATE_CONTEXT_THRESHOLD) * UPDATE_CONTEXT_THRESHOLD  # 计算context所总结的conversation的范围,如果conversations.count()=0,结果也为0
     remainder = conversations.count() - summarized_conversation_range  # 计算未被总结进context的conversation的个数
     if remainder > 0:
         # 获取最后的remainder条对话
@@ -110,7 +108,7 @@ def asynchronously_update_context(topic_id, message, conversation_id):  # TODO �
             message.append({"role": "assistant", "content": new_conversation.response})
         message.append({"role": "user",
                         "content": "Please summarize the context and content of your previous conversation with the user. The summary text should contain the main information of the user, the main context and details of the conversation. The summarized text should be limited to 250 words"})
-        updated_context = obtain_openai_response(message)
+        updated_context = obtain_openai_response(message) # TODO 鉴于在调用asynchronously_obtain_audio_assessment_embellished_by_openai这一异步函数时无法获取全局变量OPENAI_API_KEY,所以需要在测试阶段测试这一异步函数
         topic.context = updated_context
         topic.save()
     print("asynchronously_update_context method is finished")

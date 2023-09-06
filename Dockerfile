@@ -10,7 +10,7 @@ WORKDIR /code
 
 # 安装系统级依赖
 RUN apt-get update && \
-    apt-get install -y \
+    apt-get install -y --fix-missing -y \
     gcc \
     build-essential \
     libmariadb-dev-compat \
@@ -18,24 +18,24 @@ RUN apt-get update && \
     libssl-dev \
     pkg-config \
     ffmpeg && \
-    apt-get clean
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # 安装CUDA 11.8
-RUN apt-get install -y gnupg2 && \
-    echo "deb https://developer.download.nvidia.com/compute/cuda/repos/debian10/x86_64/ /" | tee /etc/apt/sources.list.d/cuda.list && \
-    apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/debian10/x86_64/7fa2af80.pub && \
-    apt-get update && \
-    apt-get install -y cuda-11-8 && \
-    apt-get clean
+#RUN apt-get install -y gnupg2 && \
+#    echo "deb https://developer.download.nvidia.com/compute/cuda/repos/debian10/x86_64/ /" | tee /etc/apt/sources.list.d/cuda.list && \
+#    apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/debian10/x86_64/7fa2af80.pub && \
+#    apt-get update && \
+#    apt-get install -y cuda-11-8 && \
+#    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # 设置 CUDA 11.8 路径
-ENV PATH /usr/local/cuda-11.8/bin:$PATH
-ENV LD_LIBRARY_PATH /usr/local/cuda-11.8/lib64:$LD_LIBRARY_PATH
+#ENV PATH /usr/local/cuda-11.8/bin:$PATH
+#ENV LD_LIBRARY_PATH /usr/local/cuda-11.8/lib64:$LD_LIBRARY_PATH
 
 # 安装 Python 依赖
 COPY requirements.txt /code/
 RUN pip install --upgrade pip
-RUN pip3 install torch torchvision torchaudio --no-cache-dir --index-url https://download.pytorch.org/whl/cu118 # 手动安装Pytorch的GPU版本
+RUN pip3 install torch torchvision torchaudio --no-cache-dir --timeout=1000 --index-url https://download.pytorch.org/whl/cu118 # 手动安装Pytorch的GPU版本
 RUN pip install -r requirements.txt
 
 # 复制项目文件到容器中
