@@ -74,7 +74,7 @@ def create_preset_topic(request): # localhost/botchat/chat/preset_topic/ 为用�
     new_topic = Topic(
         user=user,
         theme=theme,
-        custom_context=settings.PRESET_TOPIC_CONTEXTS[theme]
+        custom_context=settings.PRESET_TOPIC_CONTEXTS[theme] + settings.GENERAL_PRESET_TOPIC_CONTEXT
     )
     new_topic.save()
     # 获取与此用户相关的所有topics
