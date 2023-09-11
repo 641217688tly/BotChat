@@ -7,6 +7,8 @@
 2. **启动Redis服务器(一定要在启动celery前完成)**：非Windows操作系统的使用者可以在本地通过命令行的方式在6379端口上运行Redis;Windows用户可以安装并使用Docker下载Redis镜像并在6379端口上运行Redis容器:
 ```shell
 docker pull redis
+```
+```shell
 docker run -p 6379:6379 --name redis -d redis 
 ```
 

@@ -33,7 +33,7 @@ def create_topic(request):  # localhost/botchat/chat/newtopic/ 为用户创建�
 
 @api_view(['POST'])
 @permission_classes([])  # @permission_classes([IsAuthenticated])
-def create_user_defined_topic(request): # localhost/botchat/chat/customtopic/ 为用户创建用户自定义语境的topic
+def create_user_defined_topic(request):  # localhost/botchat/chat/customtopic/ 为用户创建用户自定义语境的topic
     # 验证数据完整性
     user_id = int(request.data.get('user_id', None))
     instructions = request.data.get('instructions', None)
@@ -60,7 +60,7 @@ def create_user_defined_topic(request): # localhost/botchat/chat/customtopic/ �
 
 @api_view(['POST'])
 @permission_classes([])  # @permission_classes([IsAuthenticated])
-def create_preset_topic(request): # localhost/botchat/chat/preset_topic/ 为用户创建预设过theme的topic
+def create_preset_topic(request):  # localhost/botchat/chat/preset_topic/ 为用户创建预设过theme的topic
     # 验证数据完整性
     user_id = int(request.data.get('user_id', None))
     theme = request.data.get('pre_theme', None)
@@ -236,7 +236,7 @@ def handle_audio(request):  # localhost/botchat/chat/handle_audio/ 实现语音�
     # 利用科大讯飞API+openaiAPI对用户输入的音频进行评分(耗时较长,应该异步地实现)
     # asynchronously_obtain_audio_assessment_embellished_by_openai(prompt, prompt_audio, new_conversation.id)
     asynchronously_obtain_audio_assessment_embellished_by_openai.delay(prompt, prompt_audio, new_conversation.id)
-
+    asynchronously_obtain_expression_assessment.delay(prompt, new_conversation.id)
     print("handle_audio view function is successfully skipping the asynchronous function!")
 
     return Response({  # 返回响应
