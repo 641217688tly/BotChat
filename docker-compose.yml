@@ -1,9 +1,10 @@
 version: '3'  # 使用docker-compose的第3版本的语法
 
-services:  # 定义要运行的服务列表
+services: # 定义要运行的服务列表
   # MySQL数据库服务
   db:
     image: "mysql:8.0.34"  # 使用预构建的MySQL 8.0.34镜像
+    container_name: botchat_db
     environment: # 设置环境变量以初始化数据库配置
       MYSQL_HOST: "db"  # 新增: 设置数据库的主机地址
       MYSQL_DATABASE: "botchat"
@@ -19,6 +20,7 @@ services:  # 定义要运行的服务列表
   # Redis服务
   redis:
     image: redis:latest  # 使用最新版本的预构建Redis镜像
+    container_name: botchat_redis
     ports:
       - "6379:6379"  # 将容器的6379端口映射到主机的6379端口
     volumes:
@@ -27,8 +29,9 @@ services:  # 定义要运行的服务列表
 
   # Celery服务
   celery:
+    container_name: botchat_celery
     build: .  # 使用当前目录的Dockerfile来构建镜像
-    command: [ "celery", "-A", "BotChat", "worker", "-l", "info", "-Q", "production", "-n", "worker1" ] # 启动Celery worker
+    command: celery -A BotChat worker -l info -P solo -Q production,celery -n worker1 # 启动Celery worker
     volumes: # 挂载卷。将当前目录映射到容器的/code目录
       - .:/code
     depends_on: # 定义服务依赖，确保redis在celery服务之前启动
@@ -37,15 +40,23 @@ services:  # 定义要运行的服务列表
 
   # Django Web服务
   web:
+    container_name: botchat_backend
     build: .  # 使用当前目录的Dockerfile来构建镜像
-    command: ["python", "manage.py", "runserver", "0.0.0.0:80"]  # 启动容器后要运行的命令
-    volumes:  # 挂载卷。将当前目录映射到容器的/code目录
+    command: [ "python", "manage.py", "runserver", "0.0.0.0:80" ]  # 启动容器后要运行的命令
+    volumes: # 挂载卷。将当前目录映射到容器的/code目录
       - .:/code
-    ports:  # 映射端口。将容器的80端口映射到主机的80端口
+    ports: # 映射端口。将容器的80端口映射到主机的80端口
       - "80:80"
-    depends_on:  # 定义服务依赖，确保db和redis在web服务之前启动
+    depends_on: # 定义服务依赖，确保db和redis在web服务之前启动
       - db
       - redis
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [ "gpu" ]
     restart: always
 
 # Docker会在您的宿主机上为这两个volume预留存储空间，使得即使您的容器被删除，下列数据也不会丢失

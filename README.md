@@ -22,10 +22,27 @@ python manage.py runserver 0.0.0.0:80
 注意:首次运行Django后端服务器时,由于会远程拉取下载faster-whisper模型,因此需要等待3-5分钟;此外,请确保在启动Django服务器前已经下载了适配于自己显卡版本的CUDA和GPU版本的Pytorch(强烈推荐从官网下载而非从pip镜像源处直接下载);如果你不是N卡,可能会遇到关键词为"float16"的报错,可以尝试将chat包下的utils.py中的load_whisper_model()函数中的"float16"更改为"float32"来解决:
 ![img_1.png](static/img2.png)
 
-### 使用Docker打包该项目为镜像的启动流程：
-1. **安装CUDA和英伟达显卡驱动**：本项目依赖于openai开源的whisper模型,因此需要CUDA和N卡驱动的支持
-2. **安装Docker**：请安装19.03版本以上的Docker(19.03版本以下的Docker没有集成NVIDIA-Docker,因此无法调用宿主机(即本地)上的CUDA和显卡驱动)
-3. **施工中**：
+### 使用该项目的Docker镜像启动后端的流程：
+#### 注意!!!使用Docker打包该项目的功能尚未实现!
+1. **安装英伟达显卡驱动**：确保本地已经安装了英伟达显卡驱动
+
+2. **安装19.03以上版本的Docker**：19.03版本以下的Docker没有集成NVIDIA-Docker,因此无法调用宿主机(即本地)上的CUDA和显卡驱动
+
+3. **从DockerHub上拉取BotChat-BackEnd的项目镜像**：
+```shell
+docker pull [YOUR_DOCKERHUB_USERNAME]/botchat:latest
+```
+
+4. **从github上获取BotChat-BackEnd源码(主要用于获取docker-compose.yml文件)**：
+```shell
+git clone git@github.com:641217688tly/BotChat.git
+```
+
+5. **在BotChat-BackEnd项目的根目录下运行docker-compose.yml文件**：
+该步能够同时启动Django服务器(的镜像)、celery服务、mysql服务、redis服务器
+```shell
+docker-compose up -d
+```
 
 ## 项目用途：
 该项目是一个用于帮助以中文为母语的人学习英语口语的Web项目。用户可以输入语音或文字，系统会自动转换成英语，并以英语语音的形式输出，以帮助用户提升他们的英语口语能力。

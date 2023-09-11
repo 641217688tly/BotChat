@@ -76,29 +76,40 @@ WSGI_APPLICATION = "BotChat.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+# 以下对于数据库和celery[redis]的配置分使用Docker和不使用Docker两种情况,可根据需求的不同进行选择
 
 # 在使用Docker来管理项目的各个容器时使用以下配置:
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'botchat',
-        'USER': 'root',
-        'PASSWORD': '20030207TLY',
-        'HOST': 'db',  # 这里更改为'db'
-        'PORT': 3306,
-    }
-}
-
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.mysql',
 #         'NAME': 'botchat',
 #         'USER': 'root',
 #         'PASSWORD': '20030207TLY',
-#         'HOST': 'localhost',
+#         'HOST': 'db',  # 这里更改为'db'
 #         'PORT': 3306,
 #     }
 # }
+
+# 不使用Docker来管理项目的各个容器时,请使用以下配置:
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'botchat',
+        'USER': 'root',
+        'PASSWORD': '20030207TLY',
+        'HOST': 'localhost',
+        'PORT': 3306,
+    }
+}
+
+# 使用Docker管理项目容器时采用如下配置方法来配置celery:
+# CELERY_BROKER_URL = 'redis://redis:6379/0' # 使用本地的 Redis
+# CELERY_RESULT_BACKEND = 'redis://redis:6379/0' # 使用 Redis 存储结果
+
+# 不使用Docker管理项目容器时采用如下配置方法来配置celery:
+CELERY_BROKER_URL = 'redis://localhost:6379/0'  # 使用本地的 Redis
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'  # 使用 Redis 存储结果
+
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -160,15 +171,6 @@ LOGGING = {
     },
 }
 
-# 使用Docker管理项目容器时采用如下配置方法来配置celery:
-CELERY_BROKER_URL = 'redis://redis:6379/0' # 使用本地的 Redis
-CELERY_RESULT_BACKEND = 'redis://redis:6379/0' # 使用 Redis 存储结果
-
-
-# 不使用Docker管理项目容器时采用如下配置方法来配置celery:
-# CELERY_BROKER_URL = 'redis://localhost:6379/0'  # 使用本地的 Redis
-# CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'  # 使用 Redis 存储结果
-
 # DRF配置:
 REST_FRAMEWORK = {
     'PAGE_SIZE': 25,
@@ -218,7 +220,8 @@ DEFAULT_TOPIC_CUSTOM_CONTEXT = "AI assistant's role: You are an oral English tea
 
 PRESET_TOPIC_CUSTOM_CONTEXTS = {
     "Attractions for help": "I have just arrived at a strange tourist spot. The scenic spot is located in the mountains, there are a lot of tall cedar and some wild animals, and is one of the most important moraine lake in the mountains surrounding it. Because the altitude is relatively high, and the weather at this time is fog in the mountains, so the weather is relatively cold. But the site has only just been built, and many of the signs are missing. As a local resident, you are very familiar with this. At this time, you found me at a loss in front of your house and took the initiative to ask.",
-    "Teacher helps with English": "You are the owner of an Internet company. Now you have to hurry to the office for a meeting. But I'm here to tell you that I'm quitting. You're trying to convince me to stay because I'm a good worker.",
+    "Teacher helps with English": "You are an English teacher. Class has just ended. You are about to leave the classroom. When I came to your help, but my English is not very good, and tension, you didn't hear you. Now you have to play the role of the teacher.",
+    "Apply for resignation": "You are the owner of an Internet company. Now you have to hurry to the office for a meeting. But I'm here to tell you that I'm quitting. You're trying to convince me to stay because I'm a good worker.",
     "Lost Items at Station": "You are a waiter. Work at a lost and found station in a busy city train station, smile and try to be patient. There is a pile of lost items on the waiter's counter, including umbrels, mobile phones, school bags and other items. I was holding a piece of paper, hoping to find something I had lost.",
     "Cajoling your girlfriend": "You're my girlfriend. I'm your boyfriend. Now we're at home, sitting on opposite ends of the couch, and it's tense because I forgot to do the dishes that night. Your head is down, your fingers are drumming on your knees, and you have a look of disapproval on your face. Your tone will be a little angry in the first few sentences, but will gradually ease.",
     "Food Ordering": "You are a waitress at a fast food restaurant called Food Delight. During a busy lunch hour, you greet guests with a smile and a neat uniform. The menu features a selection of burgers, fries and salads. When I entered the restaurant."
