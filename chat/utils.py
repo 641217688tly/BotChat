@@ -158,7 +158,7 @@ def asynchronously_obtain_expression_assessment(prompt, conversation_id):  # 获
     new_conversation = Conversation.objects.get(id=conversation_id)
     message = [
         {"role": "user", "content": prompt},
-        {"role": "user", "content": settings.ORAL_GRAMMAR_ASSESSMENT_REQUIREMENT_PROMPT},
+        {"role": "user", "content": settings.EXPRESSION_ASSESSMENT_REQUIREMENT_PROMPT}
     ]
     openai.api_key = "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"
     try:
@@ -166,15 +166,14 @@ def asynchronously_obtain_expression_assessment(prompt, conversation_id):  # 获
             model="gpt-3.5-turbo",
             messages=message,
         )
-        oral_grammar_assessment_text = response.choices[0].message['content'].strip()
-        new_conversation.expression_assessment = oral_grammar_assessment_text
+        expression_assessment_text = response.choices[0].message['content'].strip()
+        new_conversation.expression_assessment = expression_assessment_text
         new_conversation.save()
         print("asynchronously_obtain_expression_assessment method is finished")
         return "asynchronously_obtain_expression_assessment method is finished!"
     except Exception as e:
         print(f"Error occurred: {e}")
         return f"Error: {e}"
-    return
 
 # 与文本转语音相关的函数:--------------------------------------------------------------------------------------------------
 
