@@ -159,6 +159,24 @@ def get_audio_assessment(request):  # localhost/botchat/chat/get_audio_assessmen
     else:
         return Response({'audio_assessment': conversation.audio_assessment})
 
+@api_view(['GET'])
+@permission_classes([])  # @permission_classes([IsAuthenticated])
+def get_expression_assessment(request):  # localhost/botchat/chat/get_expression_assessment/ 获取对用户语音的评价信息
+    # 从请求中获取数据:
+    conversation_id = int(request.GET.get('conversation_id'))
+
+    # 根据conversation_id获取Conversation对象
+    conversation = Conversation.objects.filter(id=conversation_id).first()
+    if conversation is None:
+        return Response({'error': 'Invalid conversation'}, status=400)
+
+    # 返回用户英语表达的评价信息
+    if conversation.expression_assessment is None:
+        return Response({'error': 'The audio is being evaluated. Please try again later.'},
+                        status=status.HTTP_404_NOT_FOUND)
+    else:
+        return Response({'audio_assessment': conversation.expression_assessment})
+
 
 @api_view(['POST'])
 @permission_classes([])  # @permission_classes([IsAuthenticated])

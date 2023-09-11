@@ -5,6 +5,7 @@ urlpatterns = [
     path('gettopics/', get_topics),  # 获取用户的所有topic
     path('getdetails/', get_topic_details),  # 获取用户指定topic下的所有conversation
     path('get_audio_assessment/', get_audio_assessment),  # 获取用户的语音评估结果
+    path('get_expression_assessment/', get_expression_assessment),  # 获取用户的英语表达的评估结果
     path('newtopic/', create_topic),  # 为用户创建新的topic
     path('customtopic/', create_user_defined_topic),  # 为用户创建用户自定义语境的topic
     path('preset_topic/', create_preset_topic),  # 为用户创建已经预设过语境的topic
