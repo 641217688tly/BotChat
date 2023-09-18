@@ -18,10 +18,9 @@ class ConversationSerializer(serializers.ModelSerializer):
     response_word = serializers.CharField(source='response')  # 将原response字段映射为新的response_word字段
     prompt_voice = serializers.SerializerMethodField()  # 更改后的字段名
     response_voice = serializers.SerializerMethodField()  # 更改后的字段名
-
     class Meta:
         model = Conversation
-        fields = ['conversation_id', 'topic', 'prompt_word', 'response_word', 'audio_assessment']  # 'prompt_voice', 'response_voice'
+        fields = ['conversation_id', 'topic', 'prompt_word', 'response_word', 'audio_assessment','expression_assessment']  # 'prompt_voice', 'response_voice'
     def get_prompt_voice(self, obj):  # 更改后的获取方法
         if obj.prompt_audio:
             return base64.b64encode(obj.prompt_audio).decode('utf-8')

@@ -128,6 +128,7 @@ def get_topic_details(request):  # localhost/botchat/chat/getdetails/?topic_id �
         detail = {
             'conversation_id': conversation.id,
             'prompt': conversation.prompt,
+            'prompt_voice': convert_audio_to_base64(conversation.prompt_audio),
             'response_word': conversation.response,
             'response_voice': convert_audio_to_base64(conversation.response_audio),
             'audio_assessment': conversation.audio_assessment
@@ -147,17 +148,22 @@ def get_audio_assessment(request):  # localhost/botchat/chat/get_audio_assessmen
     if conversation is None:
         return Response({'error': 'Invalid conversation'}, status=400)
 
-    # 应当判断当前conversation是否是由用户的语音触发的,若不是,则返回错误信息
+    # 应当判断当前conversation是否是由用户的语音触发的
     if conversation.prompt_audio is None:
-        return Response({'error': 'This conversation is not triggered by user audio!'},
-                        status=status.HTTP_400_BAD_REQUEST)
-
-    # 返回语音的评价信息
-    if conversation.audio_assessment is None:
-        return Response({'error': 'The audio is being evaluated. Please try again later.'},
-                        status=status.HTTP_404_NOT_FOUND)
+        # 返回语音+语法的评价信息
+        if conversation.expression_assessment is None:
+            return Response({'error': 'The expression is being evaluated. Please try again later.'},
+                            status=status.HTTP_404_NOT_FOUND)
+        else:
+            return Response({'audio_assessment': conversation.expression_assessment})
     else:
-        return Response({'audio_assessment': conversation.audio_assessment})
+        # 返回语音+语法的评价信息
+        if (conversation.expression_assessment and conversation.audio_assessment) is None:
+            return Response({'error': 'The expression is being evaluated. Please try again later.'},
+                            status=status.HTTP_404_NOT_FOUND)
+        else:
+            return Response({'audio_assessment': f'{conversation.audio_assessment}\n{conversation.expression_assessment}'})
+
 
 @api_view(['GET'])
 @permission_classes([])  # @permission_classes([IsAuthenticated])
