@@ -37,6 +37,7 @@ def create_user_defined_topic(request):  # localhost/botchat/chat/customtopic/ �
     # 验证数据完整性
     user_id = int(request.data.get('user_id', None))
     instructions = request.data.get('instructions', None)
+    print(user_id,instructions)
     if (user_id and instructions) is None:
         return Response({'error': 'The necessary data is missing!'}, status=status.HTTP_400_BAD_REQUEST)
     # 获取用户
@@ -148,15 +149,15 @@ def get_audio_assessment(request):  # localhost/botchat/chat/get_audio_assessmen
     if conversation is None:
         return Response({'error': 'Invalid conversation'}, status=400)
 
-    # 应当判断当前conversation是否是由用户的语音触发的
-    if conversation.prompt_audio is None:
-        # 返回语音+语法的评价信息
-        if conversation.expression_assessment is None:
+    # 应当判断当前conversation是否有用户的语音
+    if conversation.prompt_audio is None: # 如果没有用户的语音,则只返回语法的评价信息
+        # 返回语法的评价信息
+        if conversation.expression_assessment is None: # 语法的评价消息尚未生成
             return Response({'error': 'The expression is being evaluated. Please try again later.'},
                             status=status.HTTP_404_NOT_FOUND)
         else:
             return Response({'audio_assessment': conversation.expression_assessment})
-    else:
+    else: # 如果有用户的语音,则返回语音+语法的评价信息
         # 返回语音+语法的评价信息
         if (conversation.expression_assessment and conversation.audio_assessment) is None:
             return Response({'error': 'The expression is being evaluated. Please try again later.'},
@@ -223,6 +224,8 @@ def handle_audio(request):  # localhost/botchat/chat/handle_audio/ 实现语音�
     user_id = int(request.data.get('user_id'))
     prompt_audio = request.data.get('prompt_voice')
     topic_id = int(request.data.get('topic_id'))
+
+    print(prompt_audio)
 
     # 确保数据完整性
     if (user_id and prompt_audio and topic_id) is None:
@@ -303,7 +306,15 @@ def chat_with_openai(request):  # localhost/botchat/chat/obtain_openai_response/
         topic = Topic.objects.filter(id=topic_id).first()
         if topic is None:
             return Response({'error': 'Invalid topic'}, status=400)
-        new_conversation = Conversation.objects.filter(id=conversation_id).first()
+        if (conversation_id == -1):
+            new_conversation = Conversation.objects.create(
+                topic=topic,
+                prompt=prompt,
+                response_audio=b''
+            )
+            conversation_id = new_conversation.id  # 将conversation_id从-1更新为刚刚创建的Conversation的id
+        else:
+            new_conversation = Conversation.objects.filter(id=conversation_id).first()
         if new_conversation is None:
             return Response({'error': 'Invalid conversation'}, status=400)
 
@@ -329,6 +340,7 @@ def chat_with_openai(request):  # localhost/botchat/chat/obtain_openai_response/
 @api_view(['POST'])
 @permission_classes([])  # @permission_classes([IsAuthenticated])
 def text_to_speech(request):  # localhost/botchat/chat/tts/ 将response文本合成为音频
+    print("text_to_speech view function is successfully called!")
     # 从请求中获取conversation_id
     conversation_id = int(request.data.get('conversation_id'))
     response = request.data.get('response_word')

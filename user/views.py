@@ -77,21 +77,21 @@ def register(request): # localhost/botchat/user/register
 
 @api_view(['POST'])
 @permission_classes([]) # @permission_classes([IsAuthenticated])
-def change_user_info(request): # localhost/botchat/user/change/info
-    user_id = request.data.get('user_id')
+def change_user_info(request): # localhost/botchat/user/change/info/
+    user_id = int(request.data.get('user_id'))
     username = request.data.get('username')
     email = request.data.get('email')
     password = request.data.get('password')
-
-    # 确保数据完整性
-    if (user_id and username and email and password) is None:
-        return Response({'error': 'Incomplete user data'}, status=400)
+    print(username, email, password)
     try:
         # 获取对应的用户对象并更新信息
         user = User.objects.get(id=user_id)
-        user.username = username
-        user.email = email
-        user.password = make_password(password)  # 使用Django的make_password方法对密码进行哈希处理
+        if username is not None:
+            user.username = username
+        if email is not None:
+            user.email = email
+        if password is not None:
+            user.password = make_password(password)  # 使用Django的make_password方法对密码进行哈希处理
         user.save()
         return Response(UserSerializer(user).data, status=status.HTTP_200_OK)
     except User.DoesNotExist:

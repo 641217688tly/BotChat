@@ -98,12 +98,12 @@ def obtain_message(topic_id, prompt):  # 创建context
 from celery import shared_task
 
 @shared_task
-def asynchronously_update_context(topic_id, message, conversation_id):  # TODO 更新context(暂未实现异步更新)
+def asynchronously_update_context(topic_id, message, conversation_id):
     print("asynchronously_update_context method is called")
     new_conversation = Conversation.objects.get(id=conversation_id)
     topic = Topic.objects.get(id=topic_id)
     conversations = topic.conversations.all()
-    if conversations.count() % UPDATE_CONTEXT_THRESHOLD == 0:
+    if conversations.count() % 20 == 0:
         if new_conversation.response is not None:
             message.append({"role": "assistant", "content": new_conversation.response})
         message.append({"role": "user",
@@ -115,7 +115,7 @@ def asynchronously_update_context(topic_id, message, conversation_id):  # TODO �
 
 
 def obtain_openai_response(message):
-    openai.api_key = OPENAI_API_KEY
+    openai.api_key = "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"
     try:
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
