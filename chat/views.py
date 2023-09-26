@@ -37,7 +37,7 @@ def create_user_defined_topic(request):  # localhost/botchat/chat/customtopic/ �
     # 验证数据完整性
     user_id = int(request.data.get('user_id', None))
     instructions = request.data.get('instructions', None)
-    print(user_id,instructions)
+    print(user_id, instructions)
     if (user_id and instructions) is None:
         return Response({'error': 'The necessary data is missing!'}, status=status.HTTP_400_BAD_REQUEST)
     # 获取用户
@@ -150,20 +150,21 @@ def get_audio_assessment(request):  # localhost/botchat/chat/get_audio_assessmen
         return Response({'error': 'Invalid conversation'}, status=400)
 
     # 应当判断当前conversation是否有用户的语音
-    if conversation.prompt_audio is None: # 如果没有用户的语音,则只返回语法的评价信息
+    if conversation.prompt_audio is None:  # 如果没有用户的语音,则只返回语法的评价信息
         # 返回语法的评价信息
-        if conversation.expression_assessment is None: # 语法的评价消息尚未生成
+        if conversation.expression_assessment is None:  # 语法的评价消息尚未生成
             return Response({'error': 'The expression is being evaluated. Please try again later.'},
                             status=status.HTTP_404_NOT_FOUND)
         else:
             return Response({'audio_assessment': conversation.expression_assessment})
-    else: # 如果有用户的语音,则返回语音+语法的评价信息
+    else:  # 如果有用户的语音,则返回语音+语法的评价信息
         # 返回语音+语法的评价信息
         if (conversation.expression_assessment and conversation.audio_assessment) is None:
             return Response({'error': 'The expression is being evaluated. Please try again later.'},
                             status=status.HTTP_404_NOT_FOUND)
         else:
-            return Response({'audio_assessment': f'{conversation.audio_assessment}\n{conversation.expression_assessment}'})
+            return Response(
+                {'audio_assessment': f'{conversation.audio_assessment}\n{conversation.expression_assessment}'})
 
 
 @api_view(['GET'])
@@ -263,8 +264,6 @@ def handle_audio(request):  # localhost/botchat/chat/handle_audio/ 实现语音�
     # 利用科大讯飞API+openaiAPI对用户输入的音频进行评分(耗时较长,应该异步地实现)
     # asynchronously_obtain_audio_assessment_embellished_by_openai(prompt, prompt_audio, new_conversation.id)
     asynchronously_obtain_audio_assessment_embellished_by_openai.delay(prompt, prompt_audio, new_conversation.id)
-    asynchronously_obtain_expression_assessment.delay(prompt, new_conversation.id)
-    print("handle_audio view function is successfully skipping the asynchronous function!")
 
     return Response({  # 返回响应
         'topic_id': topic_id,
@@ -280,7 +279,7 @@ def chat_with_openai(request):  # localhost/botchat/chat/obtain_openai_response/
     user_id = int(request.data.get('user_id'))
     topic_id = int(request.data.get('topic_id'))
     conversation_id = int(request.data.get('conversation_id'))
-    prompt = request.data.get('prompt_word', None)
+    prompt = request.data.get('prompt_word')
 
     # 确保数据完整性
     if (prompt and conversation_id and topic_id and user_id) is None:
@@ -302,7 +301,7 @@ def chat_with_openai(request):  # localhost/botchat/chat/obtain_openai_response/
             response_audio=b''
         )
         conversation_id = new_conversation.id  # 将conversation_id从-1更新为刚刚创建的Conversation的id
-    else:
+    else: # 用户Conversation != -1(用户此前通过语音输入)或者用户Conversation == -1(用户此前通过文字输入)
         topic = Topic.objects.filter(id=topic_id).first()
         if topic is None:
             return Response({'error': 'Invalid topic'}, status=400)
@@ -315,20 +314,20 @@ def chat_with_openai(request):  # localhost/botchat/chat/obtain_openai_response/
             conversation_id = new_conversation.id  # 将conversation_id从-1更新为刚刚创建的Conversation的id
         else:
             new_conversation = Conversation.objects.filter(id=conversation_id).first()
+            conversation_id = new_conversation.id
         if new_conversation is None:
             return Response({'error': 'Invalid conversation'}, status=400)
 
     # 将用户输入的音频转为的文字作为prompt与openai进行交互,得到response
-    message = obtain_message(topic_id, prompt)  # 获取历史聊天语境
+    message = obtain_message(topic.id, prompt)  # 获取历史聊天语境
     response = obtain_openai_response(message)  # 向openai发送请求并得到响应
     new_conversation.response = response  # 将response存入数据库
     new_conversation.save()
 
+    # 获取对用户口语表达的语法纠错和改善意见
+    asynchronously_obtain_expression_assessment.delay(prompt, new_conversation.id)
     # 如果该topic下的conversation达到20的倍数,则尝试异步地更新context
-    # asynchronously_update_context(topic_id, message, new_conversation.id)
-    asynchronously_update_context.delay(topic_id, message, new_conversation.id)
-
-    print("chat_with_openai view function is successfully skipping the asynchronous function!")
+    asynchronously_update_context.delay(topic.id, message, new_conversation.id)
 
     return Response({  # 返回响应
         'topic_id': topic_id,

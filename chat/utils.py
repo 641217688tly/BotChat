@@ -108,7 +108,8 @@ def asynchronously_update_context(topic_id, message, conversation_id):
             message.append({"role": "assistant", "content": new_conversation.response})
         message.append({"role": "user",
                         "content": "Please summarize the context and content of your previous conversation with the user. The summary text should contain the main information of the user, the main context and details of the conversation. The summarized text should be limited to 250 words"})
-        updated_context = obtain_openai_response(message) # TODO 鉴于在调用asynchronously_obtain_audio_assessment_embellished_by_openai这一异步函数时无法获取全局变量OPENAI_API_KEY,所以需要在测试阶段测试这一异步函数
+        updated_context = obtain_openai_response(message)
+        topic = Topic.objects.get(id=topic_id)
         topic.context = updated_context
         topic.save()
     print("asynchronously_update_context method is finished")
@@ -130,7 +131,6 @@ def obtain_openai_response(message):
 @shared_task
 def asynchronously_obtain_audio_assessment_embellished_by_openai(prompt, prompt_audio, conversation_id):  # 获取音频评估
     print("asynchronously_obtain_audio_assessment_embellished_by_openai method is called")
-    new_conversation = Conversation.objects.get(id=conversation_id)
     audio_assessment_prompt = assess_audio_from_xunfei(prompt, prompt_audio)
     message = [
         {"role": "user", "content": audio_assessment_prompt},
@@ -143,6 +143,7 @@ def asynchronously_obtain_audio_assessment_embellished_by_openai(prompt, prompt_
             messages=message,
         )
         audio_assessment_text = response.choices[0].message['content'].strip()
+        new_conversation = Conversation.objects.get(id=conversation_id)
         new_conversation.audio_assessment = audio_assessment_text
         new_conversation.save()
         print("asynchronously_obtain_audio_assessment_embellished_by_openai method is finished")
@@ -155,18 +156,18 @@ def asynchronously_obtain_audio_assessment_embellished_by_openai(prompt, prompt_
 @shared_task
 def asynchronously_obtain_expression_assessment(prompt, conversation_id):  # 获取用户表达的评估
     print("asynchronously_obtain_expression_assessment method is called")
-    new_conversation = Conversation.objects.get(id=conversation_id)
     message = [
-        {"role": "user", "content": prompt},
-        {"role": "user", "content": settings.EXPRESSION_ASSESSMENT_REQUIREMENT_PROMPT}
+        {"role": "user", "system": settings.EXPRESSION_ASSESSMENT_REQUIREMENT_PROMPT},
+        {"role": "user", "content": prompt}
     ]
     openai.api_key = "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"
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model="gpt-3.5-turbo", # gpt-4
             messages=message,
         )
         expression_assessment_text = response.choices[0].message['content'].strip()
+        new_conversation = Conversation.objects.get(id=conversation_id)
         new_conversation.expression_assessment = expression_assessment_text
         new_conversation.save()
         print("asynchronously_obtain_expression_assessment method is finished")
