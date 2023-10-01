@@ -128,11 +128,11 @@ def get_topic_details(request):  # localhost/botchat/chat/getdetails/?topic_id �
     for conversation in conversations:
         detail = {
             'conversation_id': conversation.id,
-            'prompt': conversation.prompt,
+            'prompt_word': conversation.prompt,
             'prompt_voice': convert_audio_to_base64(conversation.prompt_audio),
             'response_word': conversation.response,
             'response_voice': convert_audio_to_base64(conversation.response_audio),
-            'audio_assessment': conversation.audio_assessment
+            'audio_assessment': f'{conversation.audio_assessment}\n{conversation.expression_assessment}'
         }
         details.append(detail)
     return Response({'details': details})
@@ -153,13 +153,21 @@ def get_audio_assessment(request):  # localhost/botchat/chat/get_audio_assessmen
     if conversation.prompt_audio is None:  # 如果没有用户的语音,则只返回语法的评价信息
         # 返回语法的评价信息
         if conversation.expression_assessment is None:  # 语法的评价消息尚未生成
+            # asynchronously_obtain_expression_assessment.delay(conversation.prompt, conversation_id)  # 异步获取语法的评价信息
             return Response({'error': 'The expression is being evaluated. Please try again later.'},
                             status=status.HTTP_404_NOT_FOUND)
         else:
             return Response({'audio_assessment': conversation.expression_assessment})
     else:  # 如果有用户的语音,则返回语音+语法的评价信息
         # 返回语音+语法的评价信息
-        if (conversation.expression_assessment and conversation.audio_assessment) is None:
+        if (conversation.expression_assessment or conversation.audio_assessment) is None:
+            if (conversation.audio_assessment) is None:
+                asynchronously_obtain_audio_assessment_embellished_by_openai.delay(conversation.prompt,
+                                                                                   convert_audio_to_base64(
+                                                                                       conversation.prompt_audio),
+                                                                                   conversation_id)
+            if (conversation.expression_assessment) is None:
+                asynchronously_obtain_expression_assessment.delay(conversation.prompt, conversation_id)
             return Response({'error': 'The expression is being evaluated. Please try again later.'},
                             status=status.HTTP_404_NOT_FOUND)
         else:
@@ -226,8 +234,6 @@ def handle_audio(request):  # localhost/botchat/chat/handle_audio/ 实现语音�
     prompt_audio = request.data.get('prompt_voice')
     topic_id = int(request.data.get('topic_id'))
 
-    print(prompt_audio)
-
     # 确保数据完整性
     if (user_id and prompt_audio and topic_id) is None:
         return Response({'error': 'Missing required data!'}, status=400)
@@ -247,7 +253,15 @@ def handle_audio(request):  # localhost/botchat/chat/handle_audio/ 实现语音�
             return Response({'error': 'Invalid topic'}, status=400)
 
     # 处理音频数据,得到二进制格式的音频数据
-    prompt_audio_binary_data = base64.b64decode(prompt_audio)  # 将Base64格式的音频字符串转换为二进制数据
+    try:
+        if prompt_audio.startswith("data:audio/wav;base64,"):
+            prompt_audio = prompt_audio.split(",")[1]
+        # prompt_audio += '=' * (-len(prompt_audio) % 4)
+        prompt_audio_binary_data = base64.b64decode(prompt_audio)  # 将Base64格式的音频字符串转换为二进制数据
+        print("An error occurred while processing the audio format!")
+    except Exception as e:
+        print(e)
+        return Response({'error': 'Invalid audio!'}, status=400)
 
     # 将音频转换为文本(耗时较长)
     prompt = audio_to_text(prompt_audio_binary_data)
@@ -263,12 +277,13 @@ def handle_audio(request):  # localhost/botchat/chat/handle_audio/ 实现语音�
 
     # 利用科大讯飞API+openaiAPI对用户输入的音频进行评分(耗时较长,应该异步地实现)
     # asynchronously_obtain_audio_assessment_embellished_by_openai(prompt, prompt_audio, new_conversation.id)
-    asynchronously_obtain_audio_assessment_embellished_by_openai.delay(prompt, prompt_audio, new_conversation.id)
+    asynchronously_obtain_audio_assessment_embellished_by_openai(prompt, prompt_audio, new_conversation.id)
 
     return Response({  # 返回响应
         'topic_id': topic_id,
         'conversation_id': new_conversation.id,
-        'prompt': prompt
+        'prompt': prompt,
+        'audio_assessment': new_conversation.audio_assessment
     })
 
 
@@ -301,7 +316,7 @@ def chat_with_openai(request):  # localhost/botchat/chat/obtain_openai_response/
             response_audio=b''
         )
         conversation_id = new_conversation.id  # 将conversation_id从-1更新为刚刚创建的Conversation的id
-    else: # 用户Conversation != -1(用户此前通过语音输入)或者用户Conversation == -1(用户此前通过文字输入)
+    else:  # 用户Conversation != -1(用户此前通过语音输入)或者用户Conversation == -1(用户此前通过文字输入)
         topic = Topic.objects.filter(id=topic_id).first()
         if topic is None:
             return Response({'error': 'Invalid topic'}, status=400)
@@ -339,158 +354,156 @@ def chat_with_openai(request):  # localhost/botchat/chat/obtain_openai_response/
 @api_view(['POST'])
 @permission_classes([])  # @permission_classes([IsAuthenticated])
 def text_to_speech(request):  # localhost/botchat/chat/tts/ 将response文本合成为音频
-    print("text_to_speech view function is successfully called!")
+    print("--------------text_to_speech view function is successfully called!------------------")
     # 从请求中获取conversation_id
     conversation_id = int(request.data.get('conversation_id'))
     response = request.data.get('response_word')
 
     # 根据conversation_id获取Conversation对象
-    new_conversation = Conversation.objects.filter(id=conversation_id).first()
+    new_conversation = Conversation.objects.get(id=conversation_id)
     if new_conversation is None:
         return Response({'error': 'Invalid conversation'}, status=400)
 
-    save_audio_from_xunfei(response, new_conversation)  # 生成并保存音频
+    save_audio_from_xunfei(response, new_conversation.id)  # 生成并保存音频
+    new_conversation = Conversation.objects.get(id=conversation_id)
     new_conversation.save()
 
-    response_audio = convert_audio_to_base64(new_conversation.response_audio)  # 读取数据库中的音频并转成base64格式
-
     return Response({  # 返回响应
-        'response_voice': response_audio,
+        'response_voice': convert_audio_to_base64(new_conversation.response_audio),  # 读取数据库中的音频并转成base64格式
     })
-
 
 # ------------------------拆分功能前的receive_audio和receive_word视图函数(已被上述视图函数代替,可弃用)--------------------------
 
-@api_view(['POST'])
-@permission_classes([])  # @permission_classes([IsAuthenticated])
-def receive_text(request):  # localhost/botchat/chat/sendword/ 接收用户发送的文字prompt
-    # 从请求中获取数据:
-    user_id = int(request.data.get('user_id'))
-    prompt = request.data.get('prompt_word')
-    topic_id = int(request.data.get('topic_id'))
-
-    # 确保数据完整性
-    if (user_id and prompt and topic_id) is None:
-        return Response({'error': 'Missing required data!'}, status=400)
-    user = User.objects.filter(id=user_id).first()
-    if user is None:
-        return Response({'error': 'Invalid user'}, status=400)
-
-    # 根据topic_id的正负值判断是否为用户创建新的topic或者使用已有的topic
-    if topic_id == -1:  # 创建新的Topic
-        current_time = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
-        theme_name = f"{user.username}:{current_time}"
-        topic = Topic.objects.create(user=user, theme=theme_name)
-        topic_id = topic.id  # 更新topic_id为新创建的Topic的id
-    else:
-        topic = Topic.objects.filter(id=topic_id).first()
-        if topic is None:
-            return Response({'error': 'Invalid topic'}, status=400)
-
-    # 创建新的Conversation,以存储用户的输入prompt以及后续需要保存的response + response_audio
-    new_conversation = Conversation.objects.create(
-        topic=topic,
-        prompt=prompt,
-        response_audio=b''
-    )
-    new_conversation.save()
-
-    # 将用户输入的音频转为的文字作为prompt与openai进行交互,得到response
-    message = obtain_message(topic_id, prompt)  # 获取历史聊天语境
-    response = obtain_openai_response(message)  # 向openai发送请求并得到响应
-    new_conversation.response = response  # 将response存入数据库
-
-    # 使用响应文本合成音频并存入数据库
-    save_audio_from_xunfei(response,
-                           new_conversation)  # 生成并保存音频进数据库(包含了new_conversation.response_audio = response_audio)
-    new_conversation.save()
-
-    # 读取数据库中的音频并转成base64格式的字符串
-    response_audio_base64_data = convert_audio_to_base64(new_conversation.response_audio)
-
-    # 如果该topic下的conversation达到20的倍数,则尝试异步地更新context
-    # asynchronously_update_context(topic_id, message, new_conversation.id)
-    asynchronously_update_context.delay(topic_id, message, new_conversation.id)
-
-    return Response({  # 返回响应
-        'response_word': response,
-        'response_voice': response_audio_base64_data,
-        'topic_id': topic_id
-    })
-
-
-@api_view(['POST'])
-@permission_classes([])  # @permission_classes([IsAuthenticated])
-def receive_audio(request):  # localhost/botchat/chat/sendvoice/ 接收用户发送的语音prompt
-    # 从请求中获取数据:
-    user_id = int(request.data.get('user_id'))
-    prompt_audio = request.data.get('prompt_voice')  # 接收到的是base64格式的音频文件的字符串
-    print(prompt_audio)
-    topic_id = int(request.data.get('topic_id'))
-
-    # 确保数据完整性
-    if (user_id and prompt_audio and topic_id) is None:
-        return Response({'error': 'Missing required data!'}, status=400)
-    user = User.objects.filter(id=user_id).first()
-    if user is None:
-        return Response({'error': 'Invalid user'}, status=400)
-
-    # 根据topic_id的正负值判断是否为用户创建新的topic或者使用已有的topic
-    if topic_id == -1:  # 创建新的Topic
-        current_time = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
-        theme_name = f"{user.username}:{current_time}"
-        topic = Topic.objects.create(user=user, theme=theme_name)
-        topic_id = topic.id  # 更新topic_id为新创建的Topic的id
-    else:
-        topic = Topic.objects.filter(id=topic_id).first()
-        if topic is None:
-            return Response({'error': 'Invalid topic'}, status=400)
-
-    # 处理音频数据,得到二进制格式的音频数据
-    prompt_audio_binary_data = base64.b64decode(prompt_audio)  # 将Base64格式的音频字符串转换为二进制数据
-
-    # 将音频转换为文本(耗时较长)
-    prompt = audio_to_text(prompt_audio_binary_data)
-
-    # 创建新的Conversation,以存储用户的输入prompt + prompt_audio以及后续需要保存的response + response_audio + prompt_audio_assessment
-    new_conversation = Conversation.objects.create(
-        topic=topic,
-        prompt=prompt,
-        prompt_audio=prompt_audio_binary_data,
-        response_audio=b'',
-    )
-    new_conversation.save()
-
-    # 利用科大讯飞API+openaiAPI对用户输入的音频进行评分(耗时较长,应该异步地实现)
-    # asynchronously_obtain_audio_assessment_embellished_by_openai(prompt, prompt_audio, new_conversation.id)
-    # asynchronously_obtain_audio_assessment_embellished_by_openai.delay(prompt, prompt_audio, new_conversation.id)
-
-    print("receive_audio view function is successfully skipping the asynchronous function!")
-
-    # 将用户输入的音频转为的文字作为prompt与openai进行交互,得到response
-    message = obtain_message(topic_id, prompt)  # 获取历史聊天语境
-    response = obtain_openai_response(message)  # 向openai发送请求并得到响应
-    new_conversation.response = response  # 将response存入数据库
-
-    # 使用响应文本合成音频并存入数据库
-    save_audio_from_xunfei(response,
-                           new_conversation)  # 生成并保存音频进数据库(包含了new_conversation.response_audio = response_audio)
-    new_conversation.save()
-
-    # 读取数据库中的音频并转成base64格式的字符串
-    response_audio_base64_data = convert_audio_to_base64(new_conversation.response_audio)
-
-    # 如果该topic下的conversation达到20的倍数,则尝试异步地更新context
-    asynchronously_update_context(topic_id, message, new_conversation.id)
-    # asynchronously_update_context.delay(topic_id, message, new_conversation.id)
-
-    print("receive_audio view function is successfully skipping the asynchronous function!")
-
-    return Response({  # 返回响应
-        'response_word': response,
-        'response_voice': response_audio_base64_data,
-        'topic_id': topic_id
-    })
+# @api_view(['POST'])
+# @permission_classes([])  # @permission_classes([IsAuthenticated])
+# def receive_text(request):  # localhost/botchat/chat/sendword/ 接收用户发送的文字prompt
+#     # 从请求中获取数据:
+#     user_id = int(request.data.get('user_id'))
+#     prompt = request.data.get('prompt_word')
+#     topic_id = int(request.data.get('topic_id'))
+#
+#     # 确保数据完整性
+#     if (user_id and prompt and topic_id) is None:
+#         return Response({'error': 'Missing required data!'}, status=400)
+#     user = User.objects.filter(id=user_id).first()
+#     if user is None:
+#         return Response({'error': 'Invalid user'}, status=400)
+#
+#     # 根据topic_id的正负值判断是否为用户创建新的topic或者使用已有的topic
+#     if topic_id == -1:  # 创建新的Topic
+#         current_time = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
+#         theme_name = f"{user.username}:{current_time}"
+#         topic = Topic.objects.create(user=user, theme=theme_name)
+#         topic_id = topic.id  # 更新topic_id为新创建的Topic的id
+#     else:
+#         topic = Topic.objects.filter(id=topic_id).first()
+#         if topic is None:
+#             return Response({'error': 'Invalid topic'}, status=400)
+#
+#     # 创建新的Conversation,以存储用户的输入prompt以及后续需要保存的response + response_audio
+#     new_conversation = Conversation.objects.create(
+#         topic=topic,
+#         prompt=prompt,
+#         response_audio=b''
+#     )
+#     new_conversation.save()
+#
+#     # 将用户输入的音频转为的文字作为prompt与openai进行交互,得到response
+#     message = obtain_message(topic_id, prompt)  # 获取历史聊天语境
+#     response = obtain_openai_response(message)  # 向openai发送请求并得到响应
+#     new_conversation.response = response  # 将response存入数据库
+#
+#     # 使用响应文本合成音频并存入数据库
+#     save_audio_from_xunfei(response,
+#                            new_conversation)  # 生成并保存音频进数据库(包含了new_conversation.response_audio = response_audio)
+#     new_conversation.save()
+#
+#     # 读取数据库中的音频并转成base64格式的字符串
+#     response_audio_base64_data = convert_audio_to_base64(new_conversation.response_audio)
+#
+#     # 如果该topic下的conversation达到20的倍数,则尝试异步地更新context
+#     # asynchronously_update_context(topic_id, message, new_conversation.id)
+#     asynchronously_update_context.delay(topic_id, message, new_conversation.id)
+#
+#     return Response({  # 返回响应
+#         'response_word': response,
+#         'response_voice': response_audio_base64_data,
+#         'topic_id': topic_id
+#     })
+#
+#
+# @api_view(['POST'])
+# @permission_classes([])  # @permission_classes([IsAuthenticated])
+# def receive_audio(request):  # localhost/botchat/chat/sendvoice/ 接收用户发送的语音prompt
+#     # 从请求中获取数据:
+#     user_id = int(request.data.get('user_id'))
+#     prompt_audio = request.data.get('prompt_voice')  # 接收到的是base64格式的音频文件的字符串
+#     print(prompt_audio)
+#     topic_id = int(request.data.get('topic_id'))
+#
+#     # 确保数据完整性
+#     if (user_id and prompt_audio and topic_id) is None:
+#         return Response({'error': 'Missing required data!'}, status=400)
+#     user = User.objects.filter(id=user_id).first()
+#     if user is None:
+#         return Response({'error': 'Invalid user'}, status=400)
+#
+#     # 根据topic_id的正负值判断是否为用户创建新的topic或者使用已有的topic
+#     if topic_id == -1:  # 创建新的Topic
+#         current_time = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
+#         theme_name = f"{user.username}:{current_time}"
+#         topic = Topic.objects.create(user=user, theme=theme_name)
+#         topic_id = topic.id  # 更新topic_id为新创建的Topic的id
+#     else:
+#         topic = Topic.objects.filter(id=topic_id).first()
+#         if topic is None:
+#             return Response({'error': 'Invalid topic'}, status=400)
+#
+#     # 处理音频数据,得到二进制格式的音频数据
+#     prompt_audio_binary_data = base64.b64decode(prompt_audio)  # 将Base64格式的音频字符串转换为二进制数据
+#
+#     # 将音频转换为文本(耗时较长)
+#     prompt = audio_to_text(prompt_audio_binary_data)
+#
+#     # 创建新的Conversation,以存储用户的输入prompt + prompt_audio以及后续需要保存的response + response_audio + prompt_audio_assessment
+#     new_conversation = Conversation.objects.create(
+#         topic=topic,
+#         prompt=prompt,
+#         prompt_audio=prompt_audio_binary_data,
+#         response_audio=b'',
+#     )
+#     new_conversation.save()
+#
+#     # 利用科大讯飞API+openaiAPI对用户输入的音频进行评分(耗时较长,应该异步地实现)
+#     # asynchronously_obtain_audio_assessment_embellished_by_openai(prompt, prompt_audio, new_conversation.id)
+#     # asynchronously_obtain_audio_assessment_embellished_by_openai.delay(prompt, prompt_audio, new_conversation.id)
+#
+#     print("receive_audio view function is successfully skipping the asynchronous function!")
+#
+#     # 将用户输入的音频转为的文字作为prompt与openai进行交互,得到response
+#     message = obtain_message(topic_id, prompt)  # 获取历史聊天语境
+#     response = obtain_openai_response(message)  # 向openai发送请求并得到响应
+#     new_conversation.response = response  # 将response存入数据库
+#
+#     # 使用响应文本合成音频并存入数据库
+#     save_audio_from_xunfei(response,
+#                            new_conversation)  # 生成并保存音频进数据库(包含了new_conversation.response_audio = response_audio)
+#     new_conversation.save()
+#
+#     # 读取数据库中的音频并转成base64格式的字符串
+#     response_audio_base64_data = convert_audio_to_base64(new_conversation.response_audio)
+#
+#     # 如果该topic下的conversation达到20的倍数,则尝试异步地更新context
+#     asynchronously_update_context(topic_id, message, new_conversation.id)
+#     # asynchronously_update_context.delay(topic_id, message, new_conversation.id)
+#
+#     print("receive_audio view function is successfully skipping the asynchronous function!")
+#
+#     return Response({  # 返回响应
+#         'response_word': response,
+#         'response_voice': response_audio_base64_data,
+#         'topic_id': topic_id
+#     })
 
 # ---------------------------------------做减法前的用户自定义聊天语境的视图函数-----------------------------------------------
 

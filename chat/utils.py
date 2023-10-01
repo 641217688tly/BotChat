@@ -17,8 +17,7 @@ OPENAI_API_KEY = None
 UPDATE_CONTEXT_THRESHOLD = None  # 规定了更新context的阈值,即当theme的聊天记录达到20条时,就更新context
 
 def load_whisper_model():  # 实现模型的预加载
-    print(
-        "load_whisper_model method is called, model is loading...This model is 2.9G in size and will take 3-5 minutes to download for the first time access.")
+    print("load_whisper_model method is called, model is loading...This model is 2.9G in size and will take 3-5 minutes to download for the first time access.")
     global WHISPER_MODEL
     model_size = "large-v2"
     WHISPER_MODEL = WhisperModel(model_size, device="cuda", compute_type="float16")  # float16
@@ -95,7 +94,9 @@ def obtain_message(topic_id, prompt):  # 创建context
     message.append({"role": "user", "content": prompt})
     return message
 
+
 from celery import shared_task
+
 
 @shared_task
 def asynchronously_update_context(topic_id, message, conversation_id):
@@ -119,7 +120,7 @@ def obtain_openai_response(message):
     openai.api_key = "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"
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4",# gpt-3.5-turbo-16k
             messages=message,
         )
         return response.choices[0].message['content'].strip()
@@ -132,6 +133,7 @@ def obtain_openai_response(message):
 def asynchronously_obtain_audio_assessment_embellished_by_openai(prompt, prompt_audio, conversation_id):  # 获取音频评估
     print("asynchronously_obtain_audio_assessment_embellished_by_openai method is called")
     audio_assessment_prompt = assess_audio_from_xunfei(prompt, prompt_audio)
+    print(audio_assessment_prompt)
     message = [
         {"role": "user", "content": audio_assessment_prompt},
         {"role": "user", "content": settings.AUDIO_ASSESSMENT_REQUIREMENT_PROMPT},
@@ -139,7 +141,7 @@ def asynchronously_obtain_audio_assessment_embellished_by_openai(prompt, prompt_
     openai.api_key = "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"
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4",# gpt-3.5-turbo-16k
             messages=message,
         )
         audio_assessment_text = response.choices[0].message['content'].strip()
@@ -157,13 +159,13 @@ def asynchronously_obtain_audio_assessment_embellished_by_openai(prompt, prompt_
 def asynchronously_obtain_expression_assessment(prompt, conversation_id):  # 获取用户表达的评估
     print("asynchronously_obtain_expression_assessment method is called")
     message = [
-        {"role": "user", "system": settings.EXPRESSION_ASSESSMENT_REQUIREMENT_PROMPT},
-        {"role": "user", "content": prompt}
+        {"role": "user", "content": prompt},
+        {"role": "user", "content": settings.EXPRESSION_ASSESSMENT_REQUIREMENT_PROMPT}
     ]
     openai.api_key = "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"
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo", # gpt-4
+            model="gpt-4",  # gpt-3.5-turbo-16k
             messages=message,
         )
         expression_assessment_text = response.choices[0].message['content'].strip()
@@ -175,6 +177,7 @@ def asynchronously_obtain_expression_assessment(prompt, conversation_id):  # 获
     except Exception as e:
         print(f"Error occurred: {e}")
         return f"Error: {e}"
+
 
 # 与文本转语音相关的函数:--------------------------------------------------------------------------------------------------
 
@@ -190,9 +193,9 @@ class WsParamTTS(object):
         # 公共参数
         self.CommonArgs = {"app_id": self.APPID}
         # 业务参数，更多个性化参数可在官网查看
-        # TODO 此处可继续定制发音人、音量、语速等，可考虑自定义（没钱）
-        self.BusinessArgs = {"aue": "lame", "auf": "audio/L16;rate=16000", "vcn": "x2_enus_catherine",
-                             "tte": "utf8", "sfl": 1, "speed": 30}
+        # TODO 此处可继续定制发音人、音量、语速等，可考虑自定义（没钱）(没钱可还行)
+        self.BusinessArgs = {"aue": "lame", "auf": "audio/L16;rate=16000", "vcn": "x4_EnUs_Lindsay_assist",
+                             "tte": "utf8", "sfl": 1, "speed": 50}
         self.Data = {"status": 2, "text": str(base64.b64encode(self.Text.encode('utf-8')), "UTF8")}
 
     # 生成url
@@ -225,7 +228,7 @@ class WsParamTTS(object):
 
 
 # 处理收到websocket的音频文件
-def on_message_TTS(ws, message, conversation):
+def on_message_TTS(ws, message, conversation_id):
     try:
         message = json.loads(message)
         code = message["code"]
@@ -234,16 +237,28 @@ def on_message_TTS(ws, message, conversation):
         audio = base64.b64decode(audio)
         status = message["data"]["status"]
         if status == 2:
+            file_path = 'temp/temp.mp3'
+            with open(file_path, 'rb') as f:
+                audio_data = f.read()
+                conversation = Conversation.objects.get(id=conversation_id)
+                conversation.response_audio = audio_data
+                conversation.save()
             print("ws is closed")
             ws.close()
         if code != 0:
             errMsg = message["message"]
             print("sid:%s call error:%s code is:%s" % (sid, errMsg, code))
         else:
+            print(1)
             # 写入音频文件到指定位置conversation.response_audio
-            response_audio = conversation.response_audio
-            conversation.response_audio = response_audio + audio
-            conversation.save()
+            # response_audio = conversation.response_audio
+            # conversation.response_audio = response_audio + audio
+            # conversation.save()
+            if not os.path.exists('temp/temp.mp3'):
+                with open('temp/temp.mp3', 'wb'):
+                    pass
+            with open('temp/temp.mp3', 'ab') as f:
+                f.write(audio)
     except Exception as e:
         print("receive msg,but parse exception:", e)
 
@@ -268,26 +283,30 @@ def on_open_wrapper_TTS(ws, ws_param):
         }
         d = json.dumps(d)
         print("------>开始发送文本数据，生成音频")
+        if os.path.exists('temp/temp.mp3'):
+            os.remove('temp/temp.mp3')
         ws.send(d)
 
     thread.start_new_thread(on_open, ())
 
 
 # 将文本发送至讯飞后，把收到的音频存储数据库中
-def save_audio_from_xunfei(response_text, conversation):
+def save_audio_from_xunfei(response_text, conversation_id):
     ws_param = WsParamTTS(APPID='2fc3fd73', APISecret='NWQ3NzY3ZjU5NDhjNTgzZjFjYTZhYzll',
                           APIKey='11940ebd37b7f06d998750d55f1b576c',
                           Text=response_text)
     websocket.enableTrace(False)
     ws_url = ws_param.create_url()
     # 使用 functools.partial 来传递text到 on_message 函数
-    on_message_with_arg = partial(on_message_TTS, conversation=conversation)
+    on_message_with_arg = partial(on_message_TTS, conversation_id=conversation_id)
     ws = websocket.WebSocketApp(ws_url, on_message=on_message_with_arg, on_error=on_error, on_close=on_close_TTS)
     ws.on_open = lambda ws: on_open_wrapper_TTS(ws, ws_param)
     ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
 
 
 def convert_audio_to_base64(binary_audio_data):
+    if binary_audio_data is None:
+        return ""  # 或返回默认的音频数据或其他适当的处理
     return base64.b64encode(binary_audio_data).decode('utf-8')  # 将二进制音频数据转换为base64编码的字符串
 
 
@@ -328,7 +347,7 @@ class WsParamISE(object):
         # 业务参数(business)，更多个性化参数可在官网查看
         self.BusinessArgs = {"category": "read_chapter",  # TODO 评分模式，可自定义
                              "sub": "ise", "ent": "en_vip", "cmd": "ssb", "auf": "audio/L16;rate=16000",
-                             "aue": "lame", "text": self.Text, "ttp_skip": True, "aus": 1}
+                             "aue": "raw", "text": self.Text, "ttp_skip": True, "aus": 1}
 
     # 生成url
     def create_url(self):
@@ -362,24 +381,28 @@ class WsParamISE(object):
 
 
 # 收到websocket消息的处理
-def on_message_ISE(ws, message):
-    try:
-        code = json.loads(message)["code"]
-        sid = json.loads(message)["sid"]
-        if code != 0:
-            errMsg = json.loads(message)["message"]
-            print("sid:%s call error:%s code is:%s" % (sid, errMsg, code))
-        else:
-            data = json.loads(message)["data"]
-            status = data["status"]
-            result = data["data"]
-            if (status == 2):
-                xml = base64.b64decode(result)
-                global received_xml
-                received_xml = xml.decode("gbk")
+class On_Message_ISE:
+    def __init__(self):
+        self.received_xml = None
 
-    except Exception as e:
-        print("receive msg,but parse exception:", e)
+    def on_message(self, ws, message):
+        try:
+            code = json.loads(message)["code"]
+            sid = json.loads(message)["sid"]
+            if code != 0:
+                errMsg = json.loads(message)["message"]
+                print("sid:%s call error:%s code is:%s" % (sid, errMsg, code))
+            else:
+                data = json.loads(message)["data"]
+                status = data["status"]
+                result = data["data"]
+                if status == 2:
+                    xml = base64.b64decode(result)
+                    self.received_xml = xml.decode("gbk")
+
+        except Exception as e:
+            print("receive msg,but parse exception:", e)
+
 
 
 # 收到websocket关闭的处理
@@ -421,7 +444,6 @@ def on_open_wrapper_ISE(ws, ws_param):
                 d = {"business": {"cmd": "auw", "aus": 4, "aue": "lame"},
                      "data": {"status": 2, "data": buf}}
                 ws.send(json.dumps(d))
-                time.sleep(5)
                 break
             # 模拟音频采样间隔
             time.sleep(interval)
@@ -436,11 +458,18 @@ def assess_audio_from_xunfei(prompt, prompt_audio):
                          APIKey='11940ebd37b7f06d998750d55f1b576c',
                          AudioFile=prompt_audio,
                          Text=TEXT)
+
     websocket.enableTrace(False)
     wsUrl = wsParam.create_url()
-    ws = websocket.WebSocketApp(wsUrl, on_message=on_message_ISE, on_error=on_error, on_close=on_close_ISE)
+
+    processor = On_Message_ISE()
+
+    ws = websocket.WebSocketApp(wsUrl,
+                                on_message=lambda ws, message: processor.on_message(ws, message),
+                                on_error=on_error,
+                                on_close=on_close_ISE)
+
     on_open_with_param = functools.partial(on_open_wrapper_ISE, ws_param=wsParam)
     ws.on_open = on_open_with_param
     ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
-    global received_xml
-    return received_xml
+    return processor.received_xml
