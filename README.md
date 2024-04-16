@@ -1,4 +1,4 @@
-# BotChat-Backend
+# BotChat-Backend(参赛名称: Talk-Tutor)
 ## 后端服务器启动流程：
 ### 无Docker镜像的启动流程：
 1. **运行mysql服务**：保证本地的mysql服务已经启动,同时保证Botchat包下的settings.py中的数据库配置信息与本地的mysql服务配置信息一致
@@ -25,7 +25,6 @@ python manage.py runserver 0.0.0.0:80
 ![img_1.png](static/img2.png)
 
 ### 使用该项目的Docker镜像启动后端的流程：
-#### 注意!!!使用Docker打包该项目的功能尚未实现!
 1. **安装英伟达显卡驱动**：确保本地已经安装了英伟达显卡驱动
 
 2. **安装19.03以上版本的Docker**：19.03版本以下的Docker没有集成NVIDIA-Docker,因此无法调用宿主机(即本地)上的CUDA和显卡驱动
@@ -110,23 +109,3 @@ docker-compose up -d
 7. 开发允许用户重复播放相同语音信息的功能
 
 8. 开发允许用户选择显示隐藏文本的功能
-
-## 数据库设计:
-
-### 1.user表：
-采用Django自带的auth_user表
-
-### 2.topic表(将原records表进行拆分后得到)：
-1. id
-2. user_id
-3. theme
-4. context
-
-### 3.conversation表(将原records表进行拆分后得到)：
-1. id
-2. topic_id
-3. created_time
-4. prompt
-5. response
-### 表关系:
-user与topic一对多;topic与conversation一对多
